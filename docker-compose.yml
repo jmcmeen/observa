@@ -75,11 +75,10 @@ services:
         condition: service_healthy
 
   backup:
-    build: ./importer
+    build: ./backup
     restart: "no"
     profiles:
       - backup
-    entrypoint: /backup/backup.sh
     environment:
       PGHOST: postgres
       PGUSER: ${POSTGRES_USER:-observa}
@@ -87,7 +86,6 @@ services:
       PGDATABASE: ${POSTGRES_DB:-inaturalist}
       BACKUP_RETENTION: ${BACKUP_RETENTION:-4}
     volumes:
-      - ./backup:/backup:ro
       - backup_data:/backups
     depends_on:
       postgres:

@@ -121,3 +121,38 @@ groups:
           severity: warning
         annotations:
           summary: "Observation count dropped more than 10% between imports"
+
+      - uid: import-hung
+        title: Import stuck running (>4 hours)
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: ""
+            model:
+              rawSql: "SELECT count(*) AS hung_count FROM import_log WHERE status = 'running' AND started_at < now() - interval '4 hours';"
+              format: table
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              type: threshold
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+        for: 0s
+        labels:
+          severity: critical
+        annotations:
+          summary: "An import has been in 'running' state for more than 4 hours"

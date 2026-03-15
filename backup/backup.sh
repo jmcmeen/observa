@@ -20,7 +20,7 @@ log "Backup created: ${BACKUP_FILE} (${FILESIZE})"
 BACKUP_COUNT=$(ls -1 "${BACKUP_DIR}"/observa_*.dump 2>/dev/null | wc -l)
 if [ "$BACKUP_COUNT" -gt "$RETENTION" ]; then
     REMOVE_COUNT=$((BACKUP_COUNT - RETENTION))
-    ls -1t "${BACKUP_DIR}"/observa_*.dump | tail -n "$REMOVE_COUNT" | while read -r old_backup; do
+    ls -1 "${BACKUP_DIR}"/observa_*.dump | sort | head -n "$REMOVE_COUNT" | while read -r old_backup; do
         log "Removing old backup: ${old_backup}"
         rm -f "$old_backup"
     done

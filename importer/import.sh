@@ -7,6 +7,7 @@ DATA_DIR="/data"
 CACHE_DIR="/cache"
 SCRIPTS_DIR="/scripts"
 IMPORT_ID=""
+SWAP_COMPLETE=0
 
 log() { echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] $*"; }
 
@@ -38,8 +39,10 @@ cleanup() {
             WHERE id = $IMPORT_ID AND status = 'running';
         " 2>/dev/null || true
     fi
-    # Drop staging tables if they exist (failed mid-load)
-    psql -qtAX -c "DROP TABLE IF EXISTS observations_staging, photos_staging, taxa_staging, observers_staging CASCADE;" 2>/dev/null || true
+    # Drop staging tables only if the swap hasn't completed yet
+    if [ "$SWAP_COMPLETE" -eq 0 ]; then
+        psql -qtAX -c "DROP TABLE IF EXISTS observations_staging, photos_staging, taxa_staging, observers_staging CASCADE;" 2>/dev/null || true
+    fi
     # Release advisory lock
     psql -qtAX -c "SELECT pg_advisory_unlock(1);" 2>/dev/null || true
     # Clean up working files (cache is preserved)
@@ -125,7 +128,8 @@ done
 # Check row counts against previous import (abort if < 50% of previous)
 PREV_OBS_COUNT=$(psql -qtAX -c "SELECT COALESCE(observations_count, 0) FROM import_log WHERE status = 'completed' ORDER BY id DESC LIMIT 1;" 2>/dev/null || echo "0")
 if [ "$PREV_OBS_COUNT" -gt 0 ] 2>/dev/null; then
-    NEW_OBS_LINES=$(wc -l < "${DATA_DIR}/observations.csv")
+    # awk END{NR} counts records correctly even without a trailing newline
+    NEW_OBS_LINES=$(awk 'END{print NR}' "${DATA_DIR}/observations.csv")
     NEW_OBS_LINES=$((NEW_OBS_LINES - 1))  # subtract header
     THRESHOLD=$((PREV_OBS_COUNT / 2))
     if [ "$NEW_OBS_LINES" -lt "$THRESHOLD" ]; then
@@ -198,6 +202,7 @@ ALTER TABLE taxa_staging RENAME TO taxa;
 ALTER TABLE observers_staging RENAME TO observers;
 COMMIT;
 SQL
+SWAP_COMPLETE=1
 
 # Drop old tables
 log "Dropping old tables..."
