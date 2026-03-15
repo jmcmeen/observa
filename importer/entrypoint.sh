@@ -2,13 +2,10 @@
 set -e
 
 # Refuse to start with default credentials
-for var in PGPASSWORD; do
-  eval val=\$$var
-  if [ "$val" = "changeme" ]; then
-    echo "FATAL: $var is still set to 'changeme'. Set a real password in .env before starting." >&2
-    exit 1
-  fi
-done
+if [ "$PGPASSWORD" = "changeme" ]; then
+  echo "FATAL: PGPASSWORD is still set to 'changeme'. Set a real password in .env before starting." >&2
+  exit 1
+fi
 
 # Generate crontab from environment variable
 echo "${IMPORT_CRON:-0 3 * * *} /import.sh" > /tmp/crontab

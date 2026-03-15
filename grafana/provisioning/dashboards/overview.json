@@ -11,7 +11,7 @@
       "title": "Total Observations",
       "type": "stat",
       "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "SELECT count(*) AS \"Observations\" FROM observations;",
@@ -32,7 +32,7 @@
       "title": "Total Photos",
       "type": "stat",
       "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "SELECT count(*) AS \"Photos\" FROM photos;",
@@ -53,7 +53,7 @@
       "title": "Total Taxa",
       "type": "stat",
       "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "SELECT count(*) AS \"Taxa\" FROM taxa;",
@@ -74,7 +74,7 @@
       "title": "Total Observers",
       "type": "stat",
       "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "SELECT count(*) AS \"Observers\" FROM observers;",
@@ -95,7 +95,7 @@
       "title": "Last Import",
       "type": "stat",
       "gridPos": { "h": 4, "w": 24, "x": 0, "y": 4 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "SELECT finished_at AS \"Completed\", status AS \"Status\", observations_count AS \"Observations\", photos_count AS \"Photos\", taxa_count AS \"Taxa\", observers_count AS \"Observers\", duration_seconds || 's' AS \"Duration\" FROM import_log ORDER BY id DESC LIMIT 1;",
@@ -116,7 +116,7 @@
       "title": "Observations Over Time",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "SELECT month AS time, observation_count AS observations FROM mv_observations_monthly ORDER BY 1;",
@@ -138,7 +138,7 @@
       "title": "Top 20 Most Observed Taxa",
       "type": "barchart",
       "gridPos": { "h": 10, "w": 12, "x": 0, "y": 16 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "SELECT name AS taxon, observation_count AS observations FROM mv_top_taxa WHERE rank = 'species' ORDER BY observation_count DESC LIMIT 20;",
@@ -154,7 +154,7 @@
       "title": "Quality Grade Distribution",
       "type": "piechart",
       "gridPos": { "h": 10, "w": 6, "x": 12, "y": 16 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "SELECT quality_grade AS grade, total FROM mv_quality_grade_counts ORDER BY total DESC;",
@@ -170,7 +170,7 @@
       "title": "Photo License Distribution",
       "type": "piechart",
       "gridPos": { "h": 10, "w": 6, "x": 18, "y": 16 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "SELECT license, total FROM mv_photo_licenses ORDER BY total DESC;",
@@ -186,7 +186,7 @@
       "title": "Observations by Taxonomic Rank",
       "type": "barchart",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 26 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "SELECT rank, observation_count AS observations FROM mv_observations_by_rank ORDER BY observation_count DESC;",
@@ -202,7 +202,7 @@
       "title": "Top 20 Observers",
       "type": "table",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 26 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "SELECT login, name, observation_count AS observations FROM mv_top_observers ORDER BY observation_count DESC LIMIT 20;",
@@ -218,7 +218,7 @@
       "title": "Observation Density Map",
       "type": "geomap",
       "gridPos": { "h": 12, "w": 24, "x": 0, "y": 34 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "SELECT ST_Y(grid_geom) AS latitude, ST_X(grid_geom) AS longitude, observation_count AS metric FROM mv_observations_grid ORDER BY observation_count DESC LIMIT 5000;",
@@ -250,7 +250,7 @@
       "title": "Research Grade Percentage",
       "type": "stat",
       "gridPos": { "h": 4, "w": 8, "x": 0, "y": 46 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "SELECT round(100.0 * sum(CASE WHEN quality_grade = 'research' THEN total ELSE 0 END) / NULLIF(sum(total), 0), 1) AS \"Research Grade %\" FROM mv_quality_grade_counts;",
@@ -272,7 +272,7 @@
       "title": "Photo Coverage",
       "type": "stat",
       "gridPos": { "h": 4, "w": 8, "x": 8, "y": 46 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "SELECT round(100.0 * (SELECT count(DISTINCT observation_uuid) FROM photos) / NULLIF((SELECT count(*) FROM observations), 0), 1) AS \"With Photos %\";",
@@ -294,7 +294,7 @@
       "title": "Database Size",
       "type": "stat",
       "gridPos": { "h": 4, "w": 8, "x": 16, "y": 46 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "SELECT pg_size_pretty(pg_database_size(current_database())) AS \"DB Size\";",
@@ -315,7 +315,7 @@
       "title": "Seasonal Patterns (Observations by Month of Year)",
       "type": "barchart",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 50 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "SELECT to_char(to_date(EXTRACT(MONTH FROM month)::text, 'MM'), 'Mon') AS month_name, sum(observation_count) AS observations FROM mv_observations_monthly GROUP BY EXTRACT(MONTH FROM month), month_name ORDER BY EXTRACT(MONTH FROM month);",
@@ -331,7 +331,7 @@
       "title": "Cumulative Species Over Time",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 50 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "WITH monthly_new AS (SELECT date_trunc('month', min(observed_on)) AS first_month FROM observations WHERE taxon_id IS NOT NULL GROUP BY taxon_id) SELECT first_month AS time, sum(count(*)) OVER (ORDER BY first_month) AS cumulative_species FROM monthly_new WHERE first_month IS NOT NULL GROUP BY first_month ORDER BY first_month;",
@@ -357,7 +357,7 @@
         "name": "quality_grade",
         "label": "Quality Grade",
         "type": "query",
-        "datasource": { "type": "postgres", "uid": "" },
+        "datasource": { "type": "postgres", "uid": "inaturalist" },
         "query": "SELECT DISTINCT quality_grade FROM observations WHERE quality_grade IS NOT NULL ORDER BY quality_grade;",
         "multi": true,
         "includeAll": true,
@@ -368,7 +368,7 @@
         "name": "taxonomic_rank",
         "label": "Taxonomic Rank",
         "type": "query",
-        "datasource": { "type": "postgres", "uid": "" },
+        "datasource": { "type": "postgres", "uid": "inaturalist" },
         "query": "SELECT DISTINCT rank FROM taxa WHERE rank IS NOT NULL ORDER BY rank_level;",
         "multi": false,
         "includeAll": true,

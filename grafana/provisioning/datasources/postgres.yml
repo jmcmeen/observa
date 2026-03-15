@@ -2,6 +2,7 @@ apiVersion: 1
 
 datasources:
   - name: iNaturalist
+    uid: inaturalist
     type: postgres
     url: postgres:5432
     user: $POSTGRES_USER

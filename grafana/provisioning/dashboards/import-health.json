@@ -11,7 +11,7 @@
       "title": "Import Status",
       "type": "stat",
       "gridPos": { "h": 4, "w": 8, "x": 0, "y": 0 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "SELECT status AS \"Status\" FROM import_log ORDER BY id DESC LIMIT 1;",
@@ -35,7 +35,7 @@
       "title": "Last Import Completed",
       "type": "stat",
       "gridPos": { "h": 4, "w": 8, "x": 8, "y": 0 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "SELECT finished_at AS \"Completed\" FROM import_log WHERE status = 'completed' ORDER BY id DESC LIMIT 1;",
@@ -56,7 +56,7 @@
       "title": "Total Imports",
       "type": "stat",
       "gridPos": { "h": 4, "w": 8, "x": 16, "y": 0 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "SELECT count(*) AS \"Total\", sum(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS \"Completed\", sum(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS \"Failed\" FROM import_log;",
@@ -77,7 +77,7 @@
       "title": "Import Duration Over Time",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 4 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "SELECT started_at AS time, duration_seconds AS \"Duration (s)\" FROM import_log WHERE status = 'completed' AND duration_seconds IS NOT NULL ORDER BY started_at;",
@@ -100,7 +100,7 @@
       "title": "Observation Count Per Import",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "SELECT started_at AS time, observations_count AS \"Observations\" FROM import_log WHERE status = 'completed' ORDER BY started_at;",
@@ -122,7 +122,7 @@
       "title": "Photo Count Per Import",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "SELECT started_at AS time, photos_count AS \"Photos\" FROM import_log WHERE status = 'completed' ORDER BY started_at;",
@@ -144,7 +144,7 @@
       "title": "Import History",
       "type": "table",
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 20 },
-      "datasource": { "type": "postgres", "uid": "" },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
           "rawSql": "SELECT id, started_at, finished_at, status, duration_seconds || 's' AS duration, observations_count, photos_count, taxa_count, observers_count, error_message FROM import_log ORDER BY id DESC LIMIT 20;",

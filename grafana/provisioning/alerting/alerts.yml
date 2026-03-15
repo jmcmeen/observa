@@ -13,7 +13,7 @@ groups:
             relativeTimeRange:
               from: 600
               to: 0
-            datasourceUid: ""
+            datasourceUid: inaturalist
             model:
               rawSql: "SELECT EXTRACT(EPOCH FROM now() - finished_at) / 3600 AS hours_since FROM import_log WHERE status = 'completed' ORDER BY id DESC LIMIT 1;"
               format: table
@@ -48,7 +48,7 @@ groups:
             relativeTimeRange:
               from: 600
               to: 0
-            datasourceUid: ""
+            datasourceUid: inaturalist
             model:
               rawSql: "SELECT CASE WHEN status = 'failed' THEN 1 ELSE 0 END AS is_failed FROM import_log ORDER BY id DESC LIMIT 1;"
               format: table
@@ -83,7 +83,7 @@ groups:
             relativeTimeRange:
               from: 600
               to: 0
-            datasourceUid: ""
+            datasourceUid: inaturalist
             model:
               rawSql: >
                 SELECT CASE
@@ -130,7 +130,7 @@ groups:
             relativeTimeRange:
               from: 600
               to: 0
-            datasourceUid: ""
+            datasourceUid: inaturalist
             model:
               rawSql: "SELECT count(*) AS hung_count FROM import_log WHERE status = 'running' AND started_at < now() - interval '4 hours';"
               format: table

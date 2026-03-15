@@ -23,10 +23,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Lint Dockerfile
+      - name: Lint importer Dockerfile
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: importer/Dockerfile
+      - name: Lint backup Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: backup/Dockerfile
 
   docker-compose-validate:
     name: Docker Compose Validate
@@ -35,6 +39,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate docker-compose.yml
         run: docker compose config --quiet
+        env:
+          POSTGRES_PASSWORD: ci-test
+          API_USER_PASSWORD: ci-test
+          GF_SECURITY_ADMIN_PASSWORD: ci-test
 
   yamllint:
     name: YAML Lint
