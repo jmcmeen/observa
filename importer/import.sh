@@ -132,10 +132,10 @@ DROP TABLE IF EXISTS observers_staging CASCADE;
 DROP TABLE IF EXISTS observations_staging CASCADE;
 DROP TABLE IF EXISTS photos_staging CASCADE;
 
-CREATE TABLE taxa_staging (LIKE taxa INCLUDING ALL);
-CREATE TABLE observers_staging (LIKE observers INCLUDING ALL);
-CREATE TABLE observations_staging (LIKE observations INCLUDING ALL);
-CREATE TABLE photos_staging (LIKE photos INCLUDING ALL);
+CREATE UNLOGGED TABLE taxa_staging (LIKE taxa INCLUDING ALL);
+CREATE UNLOGGED TABLE observers_staging (LIKE observers INCLUDING ALL);
+CREATE UNLOGGED TABLE observations_staging (LIKE observations INCLUDING ALL);
+CREATE UNLOGGED TABLE photos_staging (LIKE photos INCLUDING ALL);
 SQL
 
     log "Loading data into staging tables..."
