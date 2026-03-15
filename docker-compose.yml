@@ -2,6 +2,8 @@ services:
   postgres:
     image: postgis/postgis:16-3.4
     restart: unless-stopped
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    shm_size: 2g
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-observa}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
@@ -9,6 +11,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro
+      - ./db/postgresql.conf:/etc/postgresql/postgresql.conf:ro
     ports:
       - "5432:5432"
     healthcheck:
@@ -46,6 +49,44 @@ services:
       IMPORT_CRON: ${IMPORT_CRON:-0 3 * * *}
     volumes:
       - ./db/scripts:/scripts:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep supercronic"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgrest:
+    image: postgrest/postgrest
+    restart: unless-stopped
+    environment:
+      PGRST_DB_URI: postgres://${POSTGRES_USER:-observa}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-inaturalist}
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: api_readonly
+      PGRST_OPENAPI_SERVER_PROXY_URI: http://localhost:3001
+    ports:
+      - "3001:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backup:
+    build: ./importer
+    restart: "no"
+    profiles:
+      - backup
+    entrypoint: /backup/backup.sh
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-observa}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      PGDATABASE: ${POSTGRES_DB:-inaturalist}
+      BACKUP_RETENTION: ${BACKUP_RETENTION:-4}
+    volumes:
+      - ./backup:/backup:ro
+      - backup_data:/backups
     depends_on:
       postgres:
         condition: service_healthy
@@ -53,3 +94,4 @@ services:
 volumes:
   pgdata:
   grafana_data:
+  backup_data:

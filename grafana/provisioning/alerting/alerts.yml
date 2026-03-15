@@ -1,0 +1,123 @@
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: Import Health
+    folder: Observa Alerts
+    interval: 10m
+    rules:
+      - uid: import-stale
+        title: Import is stale (>36 hours)
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: ""
+            model:
+              rawSql: "SELECT EXTRACT(EPOCH FROM now() - finished_at) / 3600 AS hours_since FROM import_log WHERE status = 'completed' ORDER BY id DESC LIMIT 1;"
+              format: table
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              type: threshold
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [36]
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+        for: 0s
+        labels:
+          severity: warning
+        annotations:
+          summary: "No successful import in the last 36 hours"
+
+      - uid: import-failed
+        title: Last import failed
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: ""
+            model:
+              rawSql: "SELECT CASE WHEN status = 'failed' THEN 1 ELSE 0 END AS is_failed FROM import_log ORDER BY id DESC LIMIT 1;"
+              format: table
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              type: threshold
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+        for: 0s
+        labels:
+          severity: critical
+        annotations:
+          summary: "The most recent import has failed"
+
+      - uid: import-count-drop
+        title: Observation count dropped >10%
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: ""
+            model:
+              rawSql: >
+                SELECT CASE
+                  WHEN prev.observations_count > 0
+                    THEN 100.0 * (prev.observations_count - curr.observations_count) / prev.observations_count
+                  ELSE 0
+                END AS pct_drop
+                FROM import_log curr
+                JOIN import_log prev ON prev.id = (
+                  SELECT id FROM import_log
+                  WHERE status = 'completed' AND id < curr.id
+                  ORDER BY id DESC LIMIT 1
+                )
+                WHERE curr.id = (SELECT id FROM import_log WHERE status = 'completed' ORDER BY id DESC LIMIT 1);
+              format: table
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              type: threshold
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [10]
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+        for: 0s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Observation count dropped more than 10% between imports"

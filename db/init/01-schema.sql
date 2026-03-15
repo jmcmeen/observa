@@ -1,4 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- Import log for tracking ETL runs
 CREATE TABLE import_log (
@@ -9,7 +10,9 @@ CREATE TABLE import_log (
     observations_count bigint,
     photos_count bigint,
     taxa_count bigint,
-    observers_count bigint
+    observers_count bigint,
+    error_message text,
+    duration_seconds integer
 );
 
 CREATE TABLE observations (
@@ -53,3 +56,15 @@ CREATE TABLE observers (
 
 -- PostGIS geometry column for spatial queries
 SELECT AddGeometryColumn('observations', 'geom', 4326, 'POINT', 2);
+
+-- Read-only role for API access
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'api_readonly') THEN
+        CREATE ROLE api_readonly NOLOGIN;
+    END IF;
+END
+$$;
+GRANT USAGE ON SCHEMA public TO api_readonly;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO api_readonly;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO api_readonly;

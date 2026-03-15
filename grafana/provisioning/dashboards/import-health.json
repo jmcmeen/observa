@@ -1,0 +1,168 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Import Status",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT status AS \"Status\" FROM import_log ORDER BY id DESC LIMIT 1;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "completed": { "color": "green", "text": "Healthy" }, "failed": { "color": "red", "text": "Failed" }, "running": { "color": "yellow", "text": "Running" } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none" }
+    },
+    {
+      "id": 2,
+      "title": "Last Import Completed",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT finished_at AS \"Completed\" FROM import_log WHERE status = 'completed' ORDER BY id DESC LIMIT 1;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 3,
+      "title": "Total Imports",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT count(*) AS \"Total\", sum(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS \"Completed\", sum(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS \"Failed\" FROM import_log;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 4,
+      "title": "Import Duration Over Time",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT started_at AS time, duration_seconds AS \"Duration (s)\" FROM import_log WHERE status = 'completed' AND duration_seconds IS NOT NULL ORDER BY started_at;",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "custom": { "fillOpacity": 15, "lineWidth": 2, "drawStyle": "bars" }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list" }, "tooltip": { "mode": "single" } }
+    },
+    {
+      "id": 5,
+      "title": "Observation Count Per Import",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT started_at AS time, observations_count AS \"Observations\" FROM import_log WHERE status = 'completed' ORDER BY started_at;",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "custom": { "fillOpacity": 10, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list" }, "tooltip": { "mode": "single" } }
+    },
+    {
+      "id": 6,
+      "title": "Photo Count Per Import",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT started_at AS time, photos_count AS \"Photos\" FROM import_log WHERE status = 'completed' ORDER BY started_at;",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "custom": { "fillOpacity": 10, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list" }, "tooltip": { "mode": "single" } }
+    },
+    {
+      "id": 7,
+      "title": "Import History",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 20 },
+      "datasource": { "type": "postgres", "uid": "" },
+      "targets": [
+        {
+          "rawSql": "SELECT id, started_at, finished_at, status, duration_seconds || 's' AS duration, observations_count, photos_count, taxa_count, observers_count, error_message FROM import_log ORDER BY id DESC LIMIT 20;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": { "showHeader": true }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["inaturalist", "observa", "operations"],
+  "templating": { "list": [] },
+  "time": { "from": "now-90d", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Import Health",
+  "uid": "import-health",
+  "version": 1
+}
