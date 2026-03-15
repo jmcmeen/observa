@@ -130,22 +130,29 @@ Run a backup on demand:
 docker compose run --rm --profile backup backup
 ```
 
-Backups are stored in the `backup_data` volume in PostgreSQL custom format. To restore:
+Backups are stored in the `backup_data` volume in PostgreSQL custom format. To restore, copy the dump from the volume and pipe it into `pg_restore`:
 
 ```bash
-docker compose exec postgres pg_restore -U observa -d inaturalist --clean /path/to/backup.dump
+# List available backups
+docker compose run --rm --profile backup --entrypoint ls backup /backups
+
+# Restore a specific backup
+docker compose run --rm --profile backup --entrypoint sh backup -c \
+  "pg_restore -h postgres -U observa -d inaturalist --clean /backups/observa_20260315_030000.dump"
 ```
 
 ## Data Export
 
-Export data as CSV or GeoJSON:
+Export data as CSV or GeoJSON. Files are written inside the importer container and can be copied out with `docker cp`:
 
 ```bash
 # Export taxa as CSV
 docker compose exec importer sh /scripts/export.sh csv taxa /data
+docker cp $(docker compose ps -q importer):/data/taxa_export.csv .
 
 # Export observations as GeoJSON (limited to 10,000 features)
 docker compose exec importer sh /scripts/export.sh geojson observations /data
+docker cp $(docker compose ps -q importer):/data/observations_export.geojson .
 ```
 
 ## Connecting Directly to the Database
