@@ -54,10 +54,11 @@ All settings are in `.env` (see `.env.example` for defaults):
 | Variable | Description | Default |
 |---|---|---|
 | `POSTGRES_USER` | Database user | `observa` |
-| `POSTGRES_PASSWORD` | Database password | `changeme` |
+| `POSTGRES_PASSWORD` | Database password | **(required)** |
 | `POSTGRES_DB` | Database name | `inaturalist` |
+| `API_USER_PASSWORD` | PostgREST API database user password | **(required)** |
 | `GF_SECURITY_ADMIN_USER` | Grafana admin username | `admin` |
-| `GF_SECURITY_ADMIN_PASSWORD` | Grafana admin password | `changeme` |
+| `GF_SECURITY_ADMIN_PASSWORD` | Grafana admin password | **(required)** |
 | `IMPORT_CRON` | Import schedule (cron expression) | `0 3 * * *` (daily 3 AM) |
 | `BACKUP_RETENTION` | Number of database backups to keep | `4` |
 
@@ -121,6 +122,33 @@ curl "http://localhost:3001/mv_quality_grade_counts"
 ```
 
 See the [PostgREST documentation](https://postgrest.org/en/stable/references/api.html) for full query syntax.
+
+### API security notice
+
+The PostgREST API is **unauthenticated by default** — anyone with network access to port 3001 can query the full dataset. This is acceptable on trusted networks or when bound to localhost (the default), but you should add authentication before exposing it to the internet.
+
+To enable JWT authentication:
+
+1. Generate a secret (at least 32 characters):
+
+   ```bash
+   openssl rand -base64 32
+   ```
+
+2. Add it to your `.env`:
+
+   ```ini
+   PGRST_JWT_SECRET=your_generated_secret
+   ```
+
+3. Add the variable to the `postgrest` service in `docker-compose.yml`:
+
+   ```yaml
+   environment:
+     PGRST_JWT_SECRET: ${PGRST_JWT_SECRET}
+   ```
+
+4. Requests must now include a valid JWT in the `Authorization: Bearer <token>` header. See the [PostgREST authentication docs](https://postgrest.org/en/stable/references/auth.html) for details on generating tokens and configuring roles.
 
 ## Database Backup
 
