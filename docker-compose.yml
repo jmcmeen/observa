@@ -8,6 +8,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-observa}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-inaturalist}
+      API_USER_PASSWORD: ${API_USER_PASSWORD:?Set API_USER_PASSWORD in .env}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro
@@ -63,7 +64,7 @@ services:
     image: postgrest/postgrest
     restart: unless-stopped
     environment:
-      PGRST_DB_URI: postgres://${POSTGRES_USER:-observa}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-inaturalist}
+      PGRST_DB_URI: postgres://api_user:${API_USER_PASSWORD:?Set API_USER_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-inaturalist}
       PGRST_DB_SCHEMAS: public
       PGRST_DB_ANON_ROLE: api_readonly
       PGRST_OPENAPI_SERVER_PROXY_URI: http://localhost:3001
