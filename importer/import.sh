@@ -4,6 +4,7 @@ set -e
 S3_BUCKET="s3://inaturalist-open-data"
 AWS_ARGS="--no-sign-request --region us-east-1 --cli-read-timeout 300"
 DATA_DIR="/data"
+CACHE_DIR="/cache"
 SCRIPTS_DIR="/scripts"
 IMPORT_ID=""
 
@@ -41,8 +42,8 @@ cleanup() {
     psql -qtAX -c "DROP TABLE IF EXISTS observations_staging, photos_staging, taxa_staging, observers_staging CASCADE;" 2>/dev/null || true
     # Release advisory lock
     psql -qtAX -c "SELECT pg_advisory_unlock(1);" 2>/dev/null || true
-    # Clean up any leftover files
-    rm -f "${DATA_DIR}"/*.csv "${DATA_DIR}"/*.csv.gz
+    # Clean up working files (cache is preserved)
+    rm -f "${DATA_DIR}"/*.csv
 }
 trap cleanup EXIT
 
@@ -59,25 +60,46 @@ START_TIME=$(date +%s)
 # Record import start
 IMPORT_ID=$(psql -qtAX -c "INSERT INTO import_log (started_at) VALUES (now()) RETURNING id;")
 
-# Download CSV files from S3
-log "Downloading data files from S3..."
+# Download CSV files from S3 (with ETag-based caching)
+mkdir -p "${CACHE_DIR}"
+log "Checking for updated data files on S3..."
 for file in observations.csv.gz observers.csv.gz photos.csv.gz taxa.csv.gz; do
-    log "  Downloading ${file}..."
-    aws s3 cp ${AWS_ARGS} "${S3_BUCKET}/${file}" "${DATA_DIR}/${file}"
+    ETAG_FILE="${CACHE_DIR}/${file}.etag"
+    CACHED_FILE="${CACHE_DIR}/${file}"
+
+    # Get the current ETag from S3
+    REMOTE_ETAG=$(aws s3api head-object ${AWS_ARGS} \
+        --bucket inaturalist-open-data --key "${file}" \
+        --query ETag --output text 2>/dev/null || echo "")
+
+    # Compare with cached ETag
+    if [ -f "$CACHED_FILE" ] && [ -f "$ETAG_FILE" ]; then
+        LOCAL_ETAG=$(cat "$ETAG_FILE")
+        if [ "$REMOTE_ETAG" = "$LOCAL_ETAG" ]; then
+            log "  ${file}: unchanged (cached)"
+            continue
+        fi
+    fi
+
+    log "  ${file}: downloading..."
+    aws s3 cp ${AWS_ARGS} "${S3_BUCKET}/${file}" "${CACHED_FILE}"
+    echo "$REMOTE_ETAG" > "$ETAG_FILE"
 done
 
 # Validate compressed files before decompression
 log "Validating downloaded files..."
-for file in "${DATA_DIR}"/*.csv.gz; do
+for file in "${CACHE_DIR}"/*.csv.gz; do
     if ! gunzip -t "$file" 2>/dev/null; then
-        log "ERROR: Corrupt file detected: $file"
+        BASENAME=$(basename "$file")
+        log "ERROR: Corrupt file detected: $BASENAME — removing from cache"
+        rm -f "$file" "${file}.etag"
         exit 1
     fi
 done
 
-log "Decompressing files..."
-for file in "${DATA_DIR}"/*.csv.gz; do
-    gunzip -f "$file"
+log "Decompressing files to working directory..."
+for file in "${CACHE_DIR}"/*.csv.gz; do
+    gunzip -c "$file" > "${DATA_DIR}/$(basename "${file%.gz}")"
 done
 
 # Validate CSV headers
@@ -128,10 +150,10 @@ SQL
 
 log "Loading data into staging tables..."
 psql -v ON_ERROR_STOP=1 <<SQL
-\COPY taxa_staging FROM '${DATA_DIR}/taxa.csv' WITH (FORMAT csv, DELIMITER E'\t', HEADER true, NULL '')
-\COPY observers_staging FROM '${DATA_DIR}/observers.csv' WITH (FORMAT csv, DELIMITER E'\t', HEADER true, NULL '')
-\COPY observations_staging (observation_uuid, observer_id, latitude, longitude, positional_accuracy, taxon_id, quality_grade, observed_on, anomaly_score) FROM '${DATA_DIR}/observations.csv' WITH (FORMAT csv, DELIMITER E'\t', HEADER true, NULL '')
-\COPY photos_staging FROM '${DATA_DIR}/photos.csv' WITH (FORMAT csv, DELIMITER E'\t', HEADER true, NULL '')
+\COPY taxa_staging FROM '${DATA_DIR}/taxa.csv' WITH (FORMAT text, HEADER true)
+\COPY observers_staging FROM '${DATA_DIR}/observers.csv' WITH (FORMAT text, HEADER true)
+\COPY observations_staging (observation_uuid, observer_id, latitude, longitude, positional_accuracy, taxon_id, quality_grade, observed_on, anomaly_score) FROM '${DATA_DIR}/observations.csv' WITH (FORMAT text, HEADER true)
+\COPY photos_staging FROM '${DATA_DIR}/photos.csv' WITH (FORMAT text, HEADER true)
 SQL
 
 # Populate PostGIS geometry column on staging table
