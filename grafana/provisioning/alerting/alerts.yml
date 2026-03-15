@@ -11,7 +11,7 @@ groups:
         data:
           - refId: A
             relativeTimeRange:
-              from: 0
+              from: 600
               to: 0
             datasourceUid: ""
             model:
@@ -46,7 +46,7 @@ groups:
         data:
           - refId: A
             relativeTimeRange:
-              from: 0
+              from: 600
               to: 0
             datasourceUid: ""
             model:
@@ -81,7 +81,7 @@ groups:
         data:
           - refId: A
             relativeTimeRange:
-              from: 0
+              from: 600
               to: 0
             datasourceUid: ""
             model:
