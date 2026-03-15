@@ -1,0 +1,25 @@
+-- Drop existing indexes before recreating (idempotent)
+DROP INDEX IF EXISTS idx_observations_taxon_id;
+DROP INDEX IF EXISTS idx_observations_observer_id;
+DROP INDEX IF EXISTS idx_observations_quality_grade;
+DROP INDEX IF EXISTS idx_observations_observed_on;
+DROP INDEX IF EXISTS idx_observations_geom;
+DROP INDEX IF EXISTS idx_photos_observation_uuid;
+DROP INDEX IF EXISTS idx_photos_observer_id;
+
+-- Observation indexes
+CREATE INDEX idx_observations_taxon_id ON observations (taxon_id);
+CREATE INDEX idx_observations_observer_id ON observations (observer_id);
+CREATE INDEX idx_observations_quality_grade ON observations (quality_grade);
+CREATE INDEX idx_observations_observed_on ON observations (observed_on);
+CREATE INDEX idx_observations_geom ON observations USING GIST (geom);
+
+-- Photo indexes
+CREATE INDEX idx_photos_observation_uuid ON photos (observation_uuid);
+CREATE INDEX idx_photos_observer_id ON photos (observer_id);
+
+-- Analyze all tables
+VACUUM ANALYZE observations;
+VACUUM ANALYZE photos;
+VACUUM ANALYZE taxa;
+VACUUM ANALYZE observers;
