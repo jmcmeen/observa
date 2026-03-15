@@ -163,14 +163,6 @@ SELECT DISTINCT ON (photo_id) * FROM photos_raw ORDER BY photo_id, observation_u
 DROP TABLE photos_raw;
 SQL
 
-# Populate PostGIS geometry column on staging table
-log "Populating geometry column..."
-psql -v ON_ERROR_STOP=1 -c "
-    UPDATE observations_staging
-    SET geom = ST_SetSRID(ST_MakePoint(longitude::double precision, latitude::double precision), 4326)
-    WHERE latitude IS NOT NULL AND longitude IS NOT NULL;
-"
-
 # Build indexes on staging tables
 log "Creating indexes on staging tables..."
 psql -v ON_ERROR_STOP=1 <<SQL
@@ -211,9 +203,10 @@ SQL
 log "Dropping old tables..."
 psql -v ON_ERROR_STOP=1 -c "DROP TABLE IF EXISTS observations_old, photos_old, taxa_old, observers_old CASCADE;"
 
-# Refresh materialized views
+# Refresh materialized views (create on first run, then concurrent refresh)
 log "Refreshing materialized views..."
 psql -v ON_ERROR_STOP=1 -f "${SCRIPTS_DIR}/create-materialized-views.sql"
+psql -v ON_ERROR_STOP=1 -f "${SCRIPTS_DIR}/refresh-materialized-views.sql"
 
 # Get row counts and update import log
 OBS_COUNT=$(psql -qtAX -c "SELECT count(*) FROM observations;")

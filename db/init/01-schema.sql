@@ -24,7 +24,12 @@ CREATE TABLE observations (
     taxon_id integer,
     quality_grade varchar(255),
     observed_on date,
-    anomaly_score double precision
+    anomaly_score double precision,
+    geom geometry(Point, 4326) GENERATED ALWAYS AS (
+        CASE WHEN latitude IS NOT NULL AND longitude IS NOT NULL
+             THEN ST_SetSRID(ST_MakePoint(longitude::double precision, latitude::double precision), 4326)
+        END
+    ) STORED
 );
 
 CREATE TABLE photos (
@@ -54,8 +59,7 @@ CREATE TABLE observers (
     name varchar(255)
 );
 
--- PostGIS geometry column for spatial queries
-SELECT AddGeometryColumn('observations', 'geom', 4326, 'POINT', 2);
+CREATE INDEX idx_import_log_status_id ON import_log (status, id DESC);
 
 -- Read-only role for API access
 DO $$

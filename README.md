@@ -62,6 +62,22 @@ All settings are in `.env` (see `.env.example` for defaults):
 | `IMPORT_CRON` | Import schedule (cron expression) | `0 3 * * *` (daily 3 AM) |
 | `BACKUP_RETENTION` | Number of database backups to keep | `4` |
 
+### PostgreSQL tuning
+
+`db/postgresql.conf` is tuned for a host with **~16 GB RAM**. The most impactful settings are `shared_buffers` (4 GB) and `work_mem` (256 MB). On hosts with less RAM, create a `docker-compose.override.yml` to lower these values:
+
+```yaml
+services:
+  postgres:
+    command: >
+      postgres
+        -c config_file=/etc/postgresql/postgresql.conf
+        -c shared_buffers=1GB
+        -c work_mem=64MB
+```
+
+See comments in `db/postgresql.conf` for details on worst-case memory usage under parallel queries.
+
 ## Services
 
 | Service | Port | Description |
