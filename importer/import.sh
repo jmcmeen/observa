@@ -174,7 +174,14 @@ psql -v ON_ERROR_STOP=1 <<SQL
 \COPY taxa_staging FROM '${DATA_DIR}/taxa.csv' WITH (FORMAT csv, DELIMITER E'\t', HEADER true, NULL '', QUOTE E'\x01')
 \COPY observers_staging FROM '${DATA_DIR}/observers.csv' WITH (FORMAT csv, DELIMITER E'\t', HEADER true, NULL '', QUOTE E'\x01')
 \COPY observations_staging (observation_uuid, observer_id, latitude, longitude, positional_accuracy, taxon_id, quality_grade, observed_on, anomaly_score) FROM '${DATA_DIR}/observations.csv' WITH (FORMAT csv, DELIMITER E'\t', HEADER true, NULL '', QUOTE E'\x01')
-\COPY photos_staging FROM '${DATA_DIR}/photos.csv' WITH (FORMAT csv, DELIMITER E'\t', HEADER true, NULL '', QUOTE E'\x01')
+
+-- Load photos via temp table to handle duplicate photo_id values in upstream data
+CREATE TEMP TABLE photos_raw (LIKE photos_staging INCLUDING DEFAULTS);
+ALTER TABLE photos_raw DROP CONSTRAINT IF EXISTS photos_raw_pkey;
+\COPY photos_raw FROM '${DATA_DIR}/photos.csv' WITH (FORMAT csv, DELIMITER E'\t', HEADER true, NULL '', QUOTE E'\x01')
+INSERT INTO photos_staging
+SELECT DISTINCT ON (photo_id) * FROM photos_raw ORDER BY photo_id, observation_uuid;
+DROP TABLE photos_raw;
 SQL
 
 # Populate PostGIS geometry column on staging table
