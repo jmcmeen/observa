@@ -190,14 +190,23 @@ COMMIT;
 SQL
     SWAP_COMPLETE=1
 
-    log "Dropping old tables..."
-    psql -v ON_ERROR_STOP=1 -c "DROP TABLE IF EXISTS observations_old, photos_old, taxa_old, observers_old CASCADE;"
+    log "Dropping materialized views and old tables..."
+    psql -v ON_ERROR_STOP=1 <<SQL
+DROP MATERIALIZED VIEW IF EXISTS mv_observations_monthly, mv_quality_grade_counts,
+    mv_top_taxa, mv_top_observers, mv_photo_licenses, mv_observations_by_rank,
+    mv_observations_grid;
+DROP TABLE IF EXISTS observations_old, photos_old, taxa_old, observers_old;
+SQL
 }
 
 refresh_views() {
-    log "Refreshing materialized views..."
+    log "Rebuilding materialized views..."
     psql -v ON_ERROR_STOP=1 -f "${SCRIPTS_DIR}/create-materialized-views.sql"
-    psql -v ON_ERROR_STOP=1 -f "${SCRIPTS_DIR}/refresh-materialized-views.sql"
+}
+
+grant_api_access() {
+    log "Granting api_readonly access to new tables..."
+    psql -v ON_ERROR_STOP=1 -c "GRANT SELECT ON ALL TABLES IN SCHEMA public TO api_readonly;"
 }
 
 # --- Main ---
@@ -223,6 +232,7 @@ validate_files
 load_staging
 swap_tables
 refresh_views
+grant_api_access
 
 # Record completion
 OBS_COUNT=$(psql -qtAX -c "SELECT count(*) FROM observations;")
