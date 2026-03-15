@@ -12,7 +12,7 @@ A Dockerized platform for hosting and exploring [iNaturalist Open Data](https://
 1. **Clone and configure**
 
    ```bash
-   git clone jmcmeen/observa && cd observa
+   git clone https://github.com/jmcmeen/observa.git && cd observa
    cp .env.example .env
    ```
 
