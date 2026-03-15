@@ -49,6 +49,7 @@ services:
       IMPORT_CRON: ${IMPORT_CRON:-0 3 * * *}
     volumes:
       - ./db/scripts:/scripts:ro
+      - import_cache:/cache
     healthcheck:
       test: ["CMD-SHELL", "pgrep supercronic"]
       interval: 30s
@@ -95,3 +96,4 @@ volumes:
   pgdata:
   grafana_data:
   backup_data:
+  import_cache:
