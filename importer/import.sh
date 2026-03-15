@@ -9,6 +9,20 @@ IMPORT_ID=""
 
 log() { echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] $*"; }
 
+# Wait for postgres to accept connections
+log "Waiting for PostgreSQL..."
+for i in $(seq 1 30); do
+    if pg_isready -h "${PGHOST:-postgres}" -U "${PGUSER:-observa}" -q 2>/dev/null; then
+        break
+    fi
+    if [ "$i" -eq 30 ]; then
+        log "ERROR: PostgreSQL not ready after 30 attempts"
+        exit 1
+    fi
+    sleep 1
+done
+log "PostgreSQL is ready"
+
 # Cleanup handler: mark import as failed if it hasn't completed
 cleanup() {
     EXIT_CODE=$?
