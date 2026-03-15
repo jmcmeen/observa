@@ -1,5 +1,8 @@
 FROM python:3.12-alpine
 
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
+
+# hadolint ignore=DL3018
 RUN apk add --no-cache \
     postgresql16-client \
     aws-cli \
