@@ -86,8 +86,29 @@ for file in observations.csv.gz observers.csv.gz photos.csv.gz taxa.csv.gz; do
     echo "$REMOTE_ETAG" > "$ETAG_FILE"
 done
 
-# Validate compressed files before decompression
-log "Validating downloaded files..."
+# Verify downloads against published checksums
+log "Fetching checksum manifest from S3..."
+CHECKSUM_FILE="${CACHE_DIR}/sha256sums.txt"
+aws s3 cp ${AWS_ARGS} "${S3_BUCKET}/sha256sums.txt" "${CHECKSUM_FILE}"
+
+log "Verifying file checksums..."
+for file in observations.csv.gz observers.csv.gz photos.csv.gz taxa.csv.gz; do
+    EXPECTED=$(grep -w "${file}" "${CHECKSUM_FILE}" | awk '{print $1}')
+    if [ -z "$EXPECTED" ]; then
+        log "WARNING: No checksum found for ${file} in manifest, skipping verification"
+        continue
+    fi
+    ACTUAL=$(sha256sum "${CACHE_DIR}/${file}" | awk '{print $1}')
+    if [ "$ACTUAL" != "$EXPECTED" ]; then
+        log "ERROR: Checksum mismatch for ${file} (expected ${EXPECTED}, got ${ACTUAL}) — removing from cache"
+        rm -f "${CACHE_DIR}/${file}" "${CACHE_DIR}/${file}.etag"
+        exit 1
+    fi
+    log "  ${file}: checksum OK"
+done
+
+# Validate compressed files before decompression (secondary integrity check)
+log "Validating compressed file integrity..."
 for file in "${CACHE_DIR}"/*.csv.gz; do
     if ! gunzip -t "$file" 2>/dev/null; then
         BASENAME=$(basename "$file")
