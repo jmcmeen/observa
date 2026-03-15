@@ -6,7 +6,7 @@ services:
     shm_size: 2g
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-observa}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-inaturalist}
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -25,9 +25,9 @@ services:
     restart: unless-stopped
     environment:
       GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:-changeme}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:?Set GF_SECURITY_ADMIN_PASSWORD in .env}
       POSTGRES_USER: ${POSTGRES_USER:-observa}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-inaturalist}
     volumes:
       - grafana_data:/var/lib/grafana
@@ -44,7 +44,7 @@ services:
     environment:
       PGHOST: postgres
       PGUSER: ${POSTGRES_USER:-observa}
-      PGPASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       PGDATABASE: ${POSTGRES_DB:-inaturalist}
       IMPORT_CRON: ${IMPORT_CRON:-0 3 * * *}
     volumes:
@@ -63,7 +63,7 @@ services:
     image: postgrest/postgrest
     restart: unless-stopped
     environment:
-      PGRST_DB_URI: postgres://${POSTGRES_USER:-observa}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-inaturalist}
+      PGRST_DB_URI: postgres://${POSTGRES_USER:-observa}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-inaturalist}
       PGRST_DB_SCHEMAS: public
       PGRST_DB_ANON_ROLE: api_readonly
       PGRST_OPENAPI_SERVER_PROXY_URI: http://localhost:3001
@@ -82,7 +82,7 @@ services:
     environment:
       PGHOST: postgres
       PGUSER: ${POSTGRES_USER:-observa}
-      PGPASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       PGDATABASE: ${POSTGRES_DB:-inaturalist}
       BACKUP_RETENTION: ${BACKUP_RETENTION:-4}
     volumes:
