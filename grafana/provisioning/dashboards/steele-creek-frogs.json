@@ -1,0 +1,205 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Total Frog Observations",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT count(*) AS \"Observations\" FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE o.latitude BETWEEN 36.53 AND 36.60 AND o.longitude BETWEEN -82.22 AND -82.13 AND t.ancestry LIKE '%/20979/%' OR (t.taxon_id = 20979 AND o.latitude BETWEEN 36.53 AND 36.60 AND o.longitude BETWEEN -82.22 AND -82.13);",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 2,
+      "title": "Unique Frog Species",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT count(DISTINCT o.taxon_id) AS \"Species\" FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE t.rank = 'species' AND o.latitude BETWEEN 36.53 AND 36.60 AND o.longitude BETWEEN -82.22 AND -82.13 AND (t.ancestry LIKE '%/20979/%' OR t.taxon_id = 20979);",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 3,
+      "title": "Unique Observers",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT count(DISTINCT o.observer_id) AS \"Observers\" FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE o.latitude BETWEEN 36.53 AND 36.60 AND o.longitude BETWEEN -82.22 AND -82.13 AND (t.ancestry LIKE '%/20979/%' OR t.taxon_id = 20979);",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "purple", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 4,
+      "title": "Research Grade %",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT round(100.0 * sum(CASE WHEN o.quality_grade = 'research' THEN 1 ELSE 0 END) / NULLIF(count(*), 0), 1) AS \"Research Grade %\" FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE o.latitude BETWEEN 36.53 AND 36.60 AND o.longitude BETWEEN -82.22 AND -82.13 AND (t.ancestry LIKE '%/20979/%' OR t.taxon_id = 20979);",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 30 }, { "color": "green", "value": 50 }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 5,
+      "title": "Frog Observations Over Time",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT date_trunc('month', o.observed_on) AS time, count(*) AS observations FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE o.observed_on IS NOT NULL AND o.latitude BETWEEN 36.53 AND 36.60 AND o.longitude BETWEEN -82.22 AND -82.13 AND (t.ancestry LIKE '%/20979/%' OR t.taxon_id = 20979) GROUP BY 1 ORDER BY 1;",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "custom": { "fillOpacity": 20, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list" }, "tooltip": { "mode": "single" } }
+    },
+    {
+      "id": 6,
+      "title": "Frog Species List",
+      "type": "barchart",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT t.name AS species, count(*) AS observations FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE t.rank = 'species' AND o.latitude BETWEEN 36.53 AND 36.60 AND o.longitude BETWEEN -82.22 AND -82.13 AND (t.ancestry LIKE '%/20979/%' OR t.taxon_id = 20979) GROUP BY t.name ORDER BY observations DESC LIMIT 20;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": { "orientation": "horizontal" }
+    },
+    {
+      "id": 7,
+      "title": "Seasonal Activity",
+      "type": "barchart",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT to_char(to_date(EXTRACT(MONTH FROM o.observed_on)::text, 'MM'), 'Mon') AS month_name, count(*) AS observations FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE o.observed_on IS NOT NULL AND o.latitude BETWEEN 36.53 AND 36.60 AND o.longitude BETWEEN -82.22 AND -82.13 AND (t.ancestry LIKE '%/20979/%' OR t.taxon_id = 20979) GROUP BY EXTRACT(MONTH FROM o.observed_on), month_name ORDER BY EXTRACT(MONTH FROM o.observed_on);",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": { "orientation": "vertical" }
+    },
+    {
+      "id": 8,
+      "title": "Observation Map",
+      "type": "geomap",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 22 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT o.latitude, o.longitude, t.name AS species, o.quality_grade FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE o.geom IS NOT NULL AND o.latitude BETWEEN 36.53 AND 36.60 AND o.longitude BETWEEN -82.22 AND -82.13 AND (t.ancestry LIKE '%/20979/%' OR t.taxon_id = 20979) LIMIT 5000;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": {
+        "view": { "id": "coords", "lat": 36.565, "lon": -82.175, "zoom": 14 },
+        "basemap": { "type": "default", "name": "OpenStreetMap" },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Frog Observations",
+            "config": {
+              "size": { "fixed": 7 },
+              "color": { "fixed": "green" },
+              "fillOpacity": 0.7
+            },
+            "location": { "mode": "coords", "latitude": "latitude", "longitude": "longitude" }
+          }
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "title": "Top Observers",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 34 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT ob.login, ob.name, count(*) AS observations, count(DISTINCT o.taxon_id) AS species_seen FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id JOIN observers ob ON o.observer_id = ob.observer_id WHERE o.latitude BETWEEN 36.53 AND 36.60 AND o.longitude BETWEEN -82.22 AND -82.13 AND (t.ancestry LIKE '%/20979/%' OR t.taxon_id = 20979) GROUP BY ob.login, ob.name ORDER BY observations DESC LIMIT 20;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": { "showHeader": true }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["inaturalist", "observa", "steele-creek", "frogs"],
+  "templating": { "list": [] },
+  "time": { "from": "now-5y", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Steele Creek Park — Frogs",
+  "uid": "steele-creek-frogs",
+  "version": 1
+}

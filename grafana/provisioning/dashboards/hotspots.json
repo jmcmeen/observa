@@ -1,0 +1,177 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Total Grid Cells",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT count(*) AS \"Grid Cells\" FROM mv_observations_grid;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 2,
+      "title": "Most Observed Grid Cell",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT observation_count AS \"Max Observations\", round(ST_Y(grid_geom)::numeric, 1) || ', ' || round(ST_X(grid_geom)::numeric, 1) AS \"Location\" FROM mv_observations_grid ORDER BY observation_count DESC LIMIT 1;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 3,
+      "title": "Median Observations per Cell",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY observation_count)::bigint AS \"Median\" FROM mv_observations_grid;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 4,
+      "title": "Global Observation Density",
+      "type": "geomap",
+      "gridPos": { "h": 16, "w": 24, "x": 0, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT ST_Y(grid_geom) AS latitude, ST_X(grid_geom) AS longitude, observation_count AS metric FROM mv_observations_grid ORDER BY observation_count DESC LIMIT 10000;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": {
+        "view": { "id": "coords", "lat": 20, "lon": 0, "zoom": 2 },
+        "basemap": { "type": "default", "name": "OpenStreetMap" },
+        "layers": [
+          {
+            "type": "heatmap",
+            "name": "Observation Density",
+            "config": {
+              "weight": { "field": "metric", "fixed": 1 },
+              "radius": { "fixed": 20 },
+              "blur": { "fixed": 15 },
+              "opacity": 0.6
+            },
+            "location": { "mode": "coords", "latitude": "latitude", "longitude": "longitude" }
+          }
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "title": "Top 50 HotSpots",
+      "type": "table",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 20 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT ROW_NUMBER() OVER (ORDER BY observation_count DESC) AS rank, round(ST_Y(grid_geom)::numeric, 2) AS latitude, round(ST_X(grid_geom)::numeric, 2) AS longitude, observation_count AS observations FROM mv_observations_grid ORDER BY observation_count DESC LIMIT 50;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": { "showHeader": true }
+    },
+    {
+      "id": 6,
+      "title": "Observation Count Distribution",
+      "type": "barchart",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 20 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT CASE WHEN observation_count < 10 THEN '1-9' WHEN observation_count < 100 THEN '10-99' WHEN observation_count < 1000 THEN '100-999' WHEN observation_count < 10000 THEN '1K-9.9K' WHEN observation_count < 100000 THEN '10K-99K' ELSE '100K+' END AS bucket, count(*) AS grid_cells FROM mv_observations_grid GROUP BY CASE WHEN observation_count < 10 THEN 1 WHEN observation_count < 100 THEN 2 WHEN observation_count < 1000 THEN 3 WHEN observation_count < 10000 THEN 4 WHEN observation_count < 100000 THEN 5 ELSE 6 END, bucket ORDER BY CASE WHEN observation_count < 10 THEN 1 WHEN observation_count < 100 THEN 2 WHEN observation_count < 1000 THEN 3 WHEN observation_count < 10000 THEN 4 WHEN observation_count < 100000 THEN 5 ELSE 6 END;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": { "orientation": "vertical" }
+    },
+    {
+      "id": 7,
+      "title": "Top HotSpots Map (Markers)",
+      "type": "geomap",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 30 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT ST_Y(grid_geom) AS latitude, ST_X(grid_geom) AS longitude, observation_count AS metric FROM mv_observations_grid ORDER BY observation_count DESC LIMIT 100;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": {
+        "view": { "id": "coords", "lat": 20, "lon": 0, "zoom": 2 },
+        "basemap": { "type": "default", "name": "OpenStreetMap" },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Top 100 HotSpots",
+            "config": {
+              "size": { "field": "metric", "min": 5, "max": 30 },
+              "color": { "field": "metric", "fixed": "red" },
+              "fillOpacity": 0.6
+            },
+            "location": { "mode": "coords", "latitude": "latitude", "longitude": "longitude" }
+          }
+        ]
+      }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["inaturalist", "observa", "hotspots"],
+  "templating": { "list": [] },
+  "time": { "from": "now-5y", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "iNaturalist HotSpots",
+  "uid": "inaturalist-hotspots",
+  "version": 1
+}
