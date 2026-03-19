@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.1.4 — 2026-03-19
+
+### Bug Fixes
+
+- **Staging index creation fails on retry** — `CREATE INDEX` on staging tables failed with "relation already exists" if indexes carried over from a previous run or cached image. Changed all staging index statements to `CREATE INDEX IF NOT EXISTS` for idempotent execution.
+
 ## v0.1.3 — 2026-03-19
 
 ### Bug Fixes
