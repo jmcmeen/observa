@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.1.2 — 2026-03-19
+
+### Bug Fixes
+
+- **Skip-unchanged logic never triggered** — The `import_log` row for the current run was inserted before the skip check, so the query always saw a `running` status instead of the previous completed one. Moved the INSERT to after the skip decision.
+- **Orphan import_log rows on skip** — Skipping an import left a row with NULL status/timestamps, which also broke the `v_health` view. Now no row is created when the import is skipped.
+- **Stale file lock blocks all future imports** — If the import process was killed uncleanly, the `/tmp/import.lock` directory was never removed. Added PID-based stale lock detection and automatic recovery.
+- **Staging index collision after first successful import** — `LIKE taxa INCLUDING ALL` copied indexes from the previous staging-turned-live tables, causing `CREATE INDEX idx_stg_*` to fail with "relation already exists". Replaced with `INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING GENERATED` to skip index copying.
+
+### Reliability
+
+- **`v_health` view filtered to finished imports** — Added `WHERE status IN ('completed', 'failed')` so the health endpoint only reports on completed or failed imports, not in-progress ones.
+
 ## v0.1.1 — 2026-03-19
 
 ### Bug Fixes
