@@ -46,6 +46,9 @@ A Dockerized platform for hosting and exploring [iNaturalist Open Data](https://
 
    - **iNaturalist Overview** — observations, taxa, maps, and analytics
    - **Import Health** — import duration trends, row counts, and status history
+   - **La Selva Biological Station** — observations, species, seasonal patterns, and map for the La Selva area in Costa Rica
+   - **Steele Creek Park — Frogs** — frog observations, species list, seasonal activity, and map for Steele Creek Park in Bristol, TN
+   - **iNaturalist HotSpots** — global observation density heatmap, top hotspots table, and distribution breakdown
 
 ## Configuration
 
@@ -101,7 +104,8 @@ The importer runs on the schedule defined by `IMPORT_CRON`. Each run uses a zero
 
 Safety features:
 
-- File lock prevents concurrent imports
+- File lock with PID-based stale lock recovery prevents concurrent imports
+- ETag caching skips the full import cycle when S3 data hasn't changed
 - Row count validation aborts if data drops >50% from previous import
 - Failed imports are automatically logged with error details
 - Staging tables are cleaned up on failure (live data preserved)
@@ -127,7 +131,7 @@ A `v_health` view is exposed via PostgREST for external uptime monitors:
 curl "http://localhost:3001/v_health"
 ```
 
-Returns the last import status, hours since last import, row counts, and any error message. This can be polled by monitoring tools without requiring Grafana access.
+Returns the status of the last finished import (completed or failed), hours since last import, row counts, and any error message. In-progress imports are excluded. This can be polled by monitoring tools without requiring Grafana access.
 
 ## REST API
 
@@ -149,35 +153,16 @@ curl "http://localhost:3001/mv_quality_grade_counts"
 
 See the [PostgREST documentation](https://postgrest.org/en/stable/references/api.html) for full query syntax.
 
-### Filtered data export
+### CSV export
 
-PostgREST supports CSV output via the `Accept` header, which is often more useful than the full-table dumps from `export.sh`:
+Add `Accept: text/csv` to any API request to get CSV output instead of JSON:
 
 ```bash
-# Export research-grade observations as CSV
 curl -H "Accept: text/csv" \
   "http://localhost:3001/observations?quality_grade=eq.research&limit=1000" > research.csv
-
-# Export observations for a specific taxon
-curl -H "Accept: text/csv" \
-  "http://localhost:3001/observations?taxon_id=eq.3726&limit=5000" > taxon_obs.csv
-
-# Export observations within a date range
-curl -H "Accept: text/csv" \
-  "http://localhost:3001/observations?observed_on=gte.2025-01-01&observed_on=lte.2025-12-31" > year_2025.csv
-
-# Export observations within a bounding box (lat/lon)
-curl -H "Accept: text/csv" \
-  "http://localhost:3001/observations?latitude=gte.10.0&latitude=lte.11.0&longitude=gte.-84.5&longitude=lte.-83.5" > bbox.csv
-
-# Combine filters — research-grade birds in 2025
-curl -H "Accept: text/csv" \
-  "http://localhost:3001/observations?quality_grade=eq.research&observed_on=gte.2025-01-01&observed_on=lte.2025-12-31&select=observation_uuid,taxon_id,observed_on,latitude,longitude" > filtered.csv
-
-# Export photo license breakdown
-curl -H "Accept: text/csv" \
-  "http://localhost:3001/mv_photo_licenses?order=total.desc" > licenses.csv
 ```
+
+See **[docs/csv-export-guide.md](docs/csv-export-guide.md)** for filtering, column selection, pagination, joins, and more examples.
 
 ### API security notice
 
@@ -227,17 +212,21 @@ docker compose run --rm --profile backup --entrypoint sh backup -c \
 
 ## Data Export
 
-Export data as CSV or GeoJSON. Files are written inside the importer container and can be copied out with `docker cp`:
+Observa supports exporting filtered CSV files for use in R, Python, Excel, QGIS, and other tools. The quickest method is the REST API:
 
 ```bash
-# Export taxa as CSV
-docker compose exec importer sh /scripts/export.sh csv taxa /data
-docker cp $(docker compose ps -q importer):/data/taxa_export.csv .
+# Research-grade observations for a specific taxon
+curl -H "Accept: text/csv" \
+  "http://localhost:3001/observations?taxon_id=eq.3726&quality_grade=eq.research" > research.csv
 
-# Export observations as GeoJSON (limited to 10,000 features)
-docker compose exec importer sh /scripts/export.sh geojson observations /data
-docker cp $(docker compose ps -q importer):/data/observations_export.geojson .
+# Top 100 most-observed species
+curl -H "Accept: text/csv" \
+  "http://localhost:3001/mv_top_taxa?rank=eq.species&order=observation_count.desc&limit=100" > top_species.csv
 ```
+
+For joins, complex queries, and full-table dumps, use `psql \COPY` or the built-in `export.sh` script.
+
+See **[docs/csv-export-guide.md](docs/csv-export-guide.md)** for the complete guide — filtering, column selection, pagination, joins, and examples for common workflows.
 
 ## Connecting Directly to the Database
 
