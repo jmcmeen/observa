@@ -77,6 +77,7 @@ SELECT
     il.duration_seconds AS last_import_duration_seconds,
     il.error_message AS last_error
 FROM import_log il
+WHERE il.status IN ('completed', 'failed')
 ORDER BY il.id DESC
 LIMIT 1;
 
