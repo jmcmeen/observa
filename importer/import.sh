@@ -158,17 +158,17 @@ SQL
 
     log "Creating indexes on staging tables..."
     psql -v ON_ERROR_STOP=1 <<SQL
-CREATE INDEX idx_stg_observations_taxon_id ON observations_staging (taxon_id);
-CREATE INDEX idx_stg_observations_observer_id ON observations_staging (observer_id);
-CREATE INDEX idx_stg_observations_quality_grade ON observations_staging (quality_grade);
-CREATE INDEX idx_stg_observations_observed_on ON observations_staging (observed_on);
-CREATE INDEX idx_stg_observations_geom ON observations_staging USING GIST (geom);
-CREATE INDEX idx_stg_observations_taxon_quality ON observations_staging (taxon_id, quality_grade);
-CREATE INDEX idx_stg_observations_date_taxon ON observations_staging (observed_on, taxon_id);
-CREATE INDEX idx_stg_photos_observation_uuid ON photos_staging (observation_uuid);
-CREATE INDEX idx_stg_photos_observer_id ON photos_staging (observer_id);
-CREATE INDEX idx_stg_taxa_name_trgm ON taxa_staging USING gin (name gin_trgm_ops);
-CREATE INDEX idx_stg_observers_login ON observers_staging (login);
+CREATE INDEX IF NOT EXISTS idx_stg_observations_taxon_id ON observations_staging (taxon_id);
+CREATE INDEX IF NOT EXISTS idx_stg_observations_observer_id ON observations_staging (observer_id);
+CREATE INDEX IF NOT EXISTS idx_stg_observations_quality_grade ON observations_staging (quality_grade);
+CREATE INDEX IF NOT EXISTS idx_stg_observations_observed_on ON observations_staging (observed_on);
+CREATE INDEX IF NOT EXISTS idx_stg_observations_geom ON observations_staging USING GIST (geom);
+CREATE INDEX IF NOT EXISTS idx_stg_observations_taxon_quality ON observations_staging (taxon_id, quality_grade);
+CREATE INDEX IF NOT EXISTS idx_stg_observations_date_taxon ON observations_staging (observed_on, taxon_id);
+CREATE INDEX IF NOT EXISTS idx_stg_photos_observation_uuid ON photos_staging (observation_uuid);
+CREATE INDEX IF NOT EXISTS idx_stg_photos_observer_id ON photos_staging (observer_id);
+CREATE INDEX IF NOT EXISTS idx_stg_taxa_name_trgm ON taxa_staging USING gin (name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_stg_observers_login ON observers_staging (login);
 VACUUM ANALYZE observations_staging;
 VACUUM ANALYZE photos_staging;
 VACUUM ANALYZE taxa_staging;
