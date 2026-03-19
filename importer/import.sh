@@ -75,7 +75,8 @@ download_one() {
     fi
 
     log "  ${file}: downloading..."
-    aws s3 cp ${AWS_ARGS} "${S3_BUCKET}/${file}" "${CACHED_FILE}"
+    aws s3 cp --no-progress ${AWS_ARGS} "${S3_BUCKET}/${file}" "${CACHED_FILE}"
+    log "  ${file}: done"
     echo "$REMOTE_ETAG" > "$ETAG_FILE"
     touch "${CACHE_DIR}/.files_changed"
 }
