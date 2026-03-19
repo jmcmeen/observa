@@ -8,6 +8,8 @@ CACHE_DIR="/cache"
 SCRIPTS_DIR="/scripts"
 IMPORT_ID=""
 SWAP_COMPLETE=0
+LOCK_DIR="/tmp/import.lock"
+FILES_CHANGED=0
 
 log() { echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] $*"; }
 
@@ -30,7 +32,8 @@ cleanup() {
     if [ "$SWAP_COMPLETE" -eq 0 ]; then
         psql -qtAX -c "DROP TABLE IF EXISTS observations_staging, photos_staging, taxa_staging, observers_staging CASCADE;" 2>/dev/null || true
     fi
-    # File lock is released automatically when the script exits
+    # Release lock
+    rmdir "$LOCK_DIR" 2>/dev/null || true
     # Clean up working files (cache is preserved)
     rm -f "${DATA_DIR}"/*.csv
 }
@@ -76,6 +79,7 @@ download_files() {
         log "  ${file}: downloading..."
         aws s3 cp ${AWS_ARGS} "${S3_BUCKET}/${file}" "${CACHED_FILE}"
         echo "$REMOTE_ETAG" > "$ETAG_FILE"
+        FILES_CHANGED=1
     done
 }
 
@@ -214,10 +218,9 @@ trap cleanup EXIT
 
 wait_for_postgres
 
-# Acquire file lock to prevent concurrent imports (held for entire script lifetime)
-LOCK_FILE="/tmp/import.lock"
-exec 9>"$LOCK_FILE"
-if ! flock -n 9; then
+# Acquire lock to prevent concurrent imports (mkdir is atomic)
+LOCK_DIR="/tmp/import.lock"
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
     log "ERROR: Another import is already in progress. Exiting."
     exit 1
 fi
@@ -228,6 +231,17 @@ START_TIME=$(date +%s)
 IMPORT_ID=$(psql -qtAX -c "INSERT INTO import_log (started_at) VALUES (now()) RETURNING id;")
 
 download_files
+
+# Skip import if no files changed and last import was successful
+if [ "$FILES_CHANGED" -eq 0 ]; then
+    LAST_STATUS=$(psql -qtAX -c "SELECT status FROM import_log ORDER BY id DESC LIMIT 1;" 2>/dev/null || echo "")
+    if [ "$LAST_STATUS" = "completed" ]; then
+        log "No new data and last import succeeded. Skipping."
+        exit 0
+    fi
+    log "No new data but last import was not successful. Re-importing."
+fi
+
 validate_files
 load_staging
 swap_tables

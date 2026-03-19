@@ -8,9 +8,9 @@ if [ "$PGPASSWORD" = "changeme" ]; then
 fi
 
 # Generate crontab from environment variable
-echo "${IMPORT_CRON:-0 3 * * *} /import.sh" > /tmp/crontab
+echo "${IMPORT_CRON:-0 3 * * *} /bin/sh /import.sh >> /proc/1/fd/1 2>&1" > /var/spool/cron/crontabs/root
 
 echo "Starting importer with schedule: ${IMPORT_CRON:-0 3 * * *}"
 echo "Run '/import.sh' manually inside the container to trigger an immediate import."
 
-exec supercronic /tmp/crontab
+exec crond -f -l 2
