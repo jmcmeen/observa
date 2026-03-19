@@ -53,7 +53,7 @@ services:
       - ./db/scripts:/scripts:ro
       - import_cache:/cache
     healthcheck:
-      test: ["CMD-SHELL", "pgrep supercronic"]
+      test: ["CMD-SHELL", "pgrep crond"]
       interval: 30s
       timeout: 5s
       retries: 3

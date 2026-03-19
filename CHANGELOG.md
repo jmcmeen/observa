@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.1.1 — 2026-03-19
+
+### Bug Fixes
+
+- **Importer not running** — Replaced `supercronic` (glibc binary incompatible with Alpine/musl) with Alpine's built-in `crond`.
+- **Broken concurrent-import lock** — PostgreSQL advisory lock was session-scoped and released immediately; replaced with `mkdir`-based file lock.
+- **Grafana panels failing** — Added empty materialized views at database init so panels load before first import; granted `pg_read_all_stats` for the Database Size panel.
+- **Removed auto-import on startup** — Initial import no longer runs automatically; must be triggered manually or by cron schedule.
+
+### Features
+
+- **Skip unchanged imports** — Importer checks S3 ETags and skips the full import cycle when data hasn't changed and last import succeeded.
+- **Health endpoint** — Added `v_health` SQL view exposed via PostgREST at `/v_health` for external uptime monitors.
+- **La Selva Biological Station dashboard** — Observations, species, seasonal patterns, and map for the La Selva area in Costa Rica.
+- **Steele Creek Park — Frogs dashboard** — Frog observations, species list, seasonal activity, and map for Steele Creek Park in Bristol, TN.
+- **iNaturalist HotSpots dashboard** — Global observation density heatmap, top hotspots table, and distribution breakdown.
+
+### Documentation
+
+- Added development guide covering: manual imports, test data seeding, alert SQL testing, and log viewing.
+- Added filtered data export examples using PostgREST with `Accept: text/csv`.
+
 ## v0.1.0 — 2026-03-15
 
 Initial release of Observa, a Dockerized platform for hosting and exploring iNaturalist Open Data.

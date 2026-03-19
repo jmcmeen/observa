@@ -61,6 +61,25 @@ CREATE TABLE observers (
 
 CREATE INDEX idx_import_log_status_id ON import_log (status, id DESC);
 
+-- Allow the main user to query database size in Grafana
+GRANT pg_read_all_stats TO CURRENT_USER;
+
+-- Health endpoint for external uptime monitors (exposed via PostgREST)
+CREATE OR REPLACE VIEW v_health AS
+SELECT
+    il.status AS last_import_status,
+    il.finished_at AS last_import_at,
+    round(EXTRACT(EPOCH FROM now() - il.finished_at) / 3600, 1) AS hours_since_import,
+    il.observations_count,
+    il.photos_count,
+    il.taxa_count,
+    il.observers_count,
+    il.duration_seconds AS last_import_duration_seconds,
+    il.error_message AS last_error
+FROM import_log il
+ORDER BY il.id DESC
+LIMIT 1;
+
 -- Read-only role for API access
 DO $$
 BEGIN
