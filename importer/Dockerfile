@@ -7,7 +7,8 @@ RUN apk add --no-cache \
     postgresql16-client \
     aws-cli \
     curl \
-    gzip
+    gzip \
+    util-linux
 
 # Install supercronic for container-friendly cron
 ARG SUPERCRONIC_VERSION=v0.2.33

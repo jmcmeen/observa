@@ -30,8 +30,7 @@ cleanup() {
     if [ "$SWAP_COMPLETE" -eq 0 ]; then
         psql -qtAX -c "DROP TABLE IF EXISTS observations_staging, photos_staging, taxa_staging, observers_staging CASCADE;" 2>/dev/null || true
     fi
-    # Release advisory lock
-    psql -qtAX -c "SELECT pg_advisory_unlock(1);" 2>/dev/null || true
+    # File lock is released automatically when the script exits
     # Clean up working files (cache is preserved)
     rm -f "${DATA_DIR}"/*.csv
 }
@@ -215,9 +214,10 @@ trap cleanup EXIT
 
 wait_for_postgres
 
-# Acquire advisory lock to prevent concurrent imports
-LOCK_ACQUIRED=$(psql -qtAX -c "SELECT pg_try_advisory_lock(1);")
-if [ "$LOCK_ACQUIRED" != "t" ]; then
+# Acquire file lock to prevent concurrent imports (held for entire script lifetime)
+LOCK_FILE="/tmp/import.lock"
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
     log "ERROR: Another import is already in progress. Exiting."
     exit 1
 fi
