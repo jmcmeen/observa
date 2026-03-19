@@ -101,7 +101,7 @@ The importer runs on the schedule defined by `IMPORT_CRON`. Each run uses a zero
 
 Safety features:
 
-- Advisory lock prevents concurrent imports
+- File lock prevents concurrent imports
 - Row count validation aborts if data drops >50% from previous import
 - Failed imports are automatically logged with error details
 - Staging tables are cleaned up on failure (live data preserved)
@@ -118,6 +118,16 @@ To check import logs:
 docker compose exec postgres psql -U observa -d inaturalist \
   -c "SELECT * FROM import_log ORDER BY id DESC LIMIT 5;"
 ```
+
+## Health Endpoint
+
+A `v_health` view is exposed via PostgREST for external uptime monitors:
+
+```bash
+curl "http://localhost:3001/v_health"
+```
+
+Returns the last import status, hours since last import, row counts, and any error message. This can be polled by monitoring tools without requiring Grafana access.
 
 ## REST API
 
@@ -138,6 +148,36 @@ curl "http://localhost:3001/mv_quality_grade_counts"
 ```
 
 See the [PostgREST documentation](https://postgrest.org/en/stable/references/api.html) for full query syntax.
+
+### Filtered data export
+
+PostgREST supports CSV output via the `Accept` header, which is often more useful than the full-table dumps from `export.sh`:
+
+```bash
+# Export research-grade observations as CSV
+curl -H "Accept: text/csv" \
+  "http://localhost:3001/observations?quality_grade=eq.research&limit=1000" > research.csv
+
+# Export observations for a specific taxon
+curl -H "Accept: text/csv" \
+  "http://localhost:3001/observations?taxon_id=eq.3726&limit=5000" > taxon_obs.csv
+
+# Export observations within a date range
+curl -H "Accept: text/csv" \
+  "http://localhost:3001/observations?observed_on=gte.2025-01-01&observed_on=lte.2025-12-31" > year_2025.csv
+
+# Export observations within a bounding box (lat/lon)
+curl -H "Accept: text/csv" \
+  "http://localhost:3001/observations?latitude=gte.10.0&latitude=lte.11.0&longitude=gte.-84.5&longitude=lte.-83.5" > bbox.csv
+
+# Combine filters — research-grade birds in 2025
+curl -H "Accept: text/csv" \
+  "http://localhost:3001/observations?quality_grade=eq.research&observed_on=gte.2025-01-01&observed_on=lte.2025-12-31&select=observation_uuid,taxon_id,observed_on,latitude,longitude" > filtered.csv
+
+# Export photo license breakdown
+curl -H "Accept: text/csv" \
+  "http://localhost:3001/mv_photo_licenses?order=total.desc" > licenses.csv
+```
 
 ### API security notice
 
@@ -220,6 +260,94 @@ The following alerts are pre-configured:
 - **Observation count drop** — warns if count drops >10% between imports
 
 Configure notification channels in Grafana under Alerting > Contact Points.
+
+## Development
+
+### Running the importer against an existing database
+
+If the database is already populated, you can re-run the importer without downloading from S3. The importer uses ETag caching, so if cached files exist and haven't changed upstream, the download phase is skipped automatically:
+
+```bash
+docker compose exec importer /bin/sh /import.sh
+```
+
+To force a fresh download (e.g., after clearing the cache volume):
+
+```bash
+docker compose down importer
+docker volume rm observa_import_cache
+docker compose up -d importer
+docker compose exec importer /bin/sh /import.sh
+```
+
+### Seeding a small test dataset
+
+For local testing without downloading the full ~10 GB dataset, you can insert sample data directly:
+
+```bash
+docker compose exec postgres psql -U observa -d inaturalist <<'SQL'
+INSERT INTO taxa (taxon_id, name, rank, rank_level, active)
+VALUES (1, 'Aves', 'class', 50, true),
+       (2, 'Turdus migratorius', 'species', 10, true);
+
+INSERT INTO observers (observer_id, login, name)
+VALUES (1, 'testuser', 'Test User');
+
+INSERT INTO observations (observation_uuid, observer_id, latitude, longitude, taxon_id, quality_grade, observed_on)
+VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 1, 36.5, -82.5, 2, 'research', '2025-06-15');
+
+INSERT INTO photos (photo_uuid, photo_id, observation_uuid, observer_id, license)
+VALUES ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 1, 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 1, 'CC-BY');
+SQL
+```
+
+Then refresh the materialized views so dashboards reflect the test data:
+
+```bash
+docker compose exec postgres psql -U observa -d inaturalist -f /docker-entrypoint-initdb.d/../scripts/create-materialized-views.sql
+```
+
+Note: the views script is mounted at `/scripts` inside the importer container, but accessible from the postgres container only if you mount it separately. Alternatively, run it from the importer:
+
+```bash
+docker compose exec importer psql -f /scripts/create-materialized-views.sql
+```
+
+### Testing alert SQL
+
+Grafana alert rules query PostgreSQL directly. To test alert queries from the command line:
+
+```bash
+# Import stale alert — checks hours since last successful import
+docker compose exec postgres psql -U observa -d inaturalist -c "
+  SELECT EXTRACT(EPOCH FROM now() - max(finished_at)) / 3600 AS hours_since_import
+  FROM import_log WHERE status = 'completed';
+"
+
+# Observation count drop alert
+docker compose exec postgres psql -U observa -d inaturalist -c "
+  SELECT a.observations_count AS current, b.observations_count AS previous,
+         round(100.0 * (b.observations_count - a.observations_count) / b.observations_count, 1) AS drop_pct
+  FROM import_log a, import_log b
+  WHERE a.id = (SELECT max(id) FROM import_log WHERE status = 'completed')
+    AND b.id = (SELECT max(id) FROM import_log WHERE status = 'completed' AND id < a.id);
+"
+```
+
+### Rebuilding a single service
+
+```bash
+docker compose up -d --build importer   # rebuild and restart importer only
+docker compose up -d --build postgres   # rebuild postgres (data persists in volume)
+```
+
+### Viewing logs
+
+```bash
+docker compose logs -f importer         # follow importer logs
+docker compose logs --tail 50 postgres  # last 50 lines from postgres
+docker compose logs                     # all services
+```
 
 ## Data Source
 
