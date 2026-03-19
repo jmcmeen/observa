@@ -61,6 +61,9 @@ CREATE TABLE observers (
 
 CREATE INDEX idx_import_log_status_id ON import_log (status, id DESC);
 
+-- Allow the main user to query database size in Grafana
+GRANT pg_read_all_stats TO CURRENT_USER;
+
 -- Read-only role for API access
 DO $$
 BEGIN
