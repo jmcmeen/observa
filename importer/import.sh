@@ -135,10 +135,10 @@ DROP TABLE IF EXISTS observers_staging CASCADE;
 DROP TABLE IF EXISTS observations_staging CASCADE;
 DROP TABLE IF EXISTS photos_staging CASCADE;
 
-CREATE UNLOGGED TABLE taxa_staging (LIKE taxa INCLUDING ALL);
-CREATE UNLOGGED TABLE observers_staging (LIKE observers INCLUDING ALL);
-CREATE UNLOGGED TABLE observations_staging (LIKE observations INCLUDING ALL);
-CREATE UNLOGGED TABLE photos_staging (LIKE photos INCLUDING ALL);
+CREATE UNLOGGED TABLE taxa_staging (LIKE taxa INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING GENERATED);
+CREATE UNLOGGED TABLE observers_staging (LIKE observers INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING GENERATED);
+CREATE UNLOGGED TABLE observations_staging (LIKE observations INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING GENERATED);
+CREATE UNLOGGED TABLE photos_staging (LIKE photos INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING GENERATED);
 SQL
 
     log "Loading data into staging tables..."
@@ -217,15 +217,25 @@ wait_for_postgres
 
 # Acquire lock to prevent concurrent imports (mkdir is atomic)
 LOCK_DIR="/tmp/import.lock"
-if ! mkdir "$LOCK_DIR" 2>/dev/null; then
-    log "ERROR: Another import is already in progress. Exiting."
+if mkdir "$LOCK_DIR" 2>/dev/null; then
+    echo $$ > "$LOCK_DIR/pid"
+elif [ -f "$LOCK_DIR/pid" ]; then
+    LOCK_PID=$(cat "$LOCK_DIR/pid" 2>/dev/null || echo "")
+    if [ -n "$LOCK_PID" ] && kill -0 "$LOCK_PID" 2>/dev/null; then
+        log "ERROR: Another import (PID $LOCK_PID) is already running. Exiting."
+        exit 1
+    fi
+    log "WARNING: Removing stale lock from PID $LOCK_PID"
+    rm -rf "$LOCK_DIR"
+    mkdir "$LOCK_DIR"
+    echo $$ > "$LOCK_DIR/pid"
+else
+    log "ERROR: Lock exists but no PID file found. Remove $LOCK_DIR manually."
     exit 1
 fi
 
 log "=== iNaturalist import started ==="
 START_TIME=$(date +%s)
-
-IMPORT_ID=$(psql -qtAX -c "INSERT INTO import_log (started_at) VALUES (now()) RETURNING id;")
 
 download_files
 
@@ -238,6 +248,8 @@ if [ "$FILES_CHANGED" -eq 0 ]; then
     fi
     log "No new data but last import was not successful. Re-importing."
 fi
+
+IMPORT_ID=$(psql -qtAX -c "INSERT INTO import_log (started_at) VALUES (now()) RETURNING id;")
 
 validate_files
 load_staging
