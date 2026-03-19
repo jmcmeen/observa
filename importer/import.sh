@@ -193,12 +193,9 @@ COMMIT;
 SQL
     SWAP_COMPLETE=1
 
-    log "Dropping materialized views and old tables..."
+    log "Dropping old tables..."
     psql -v ON_ERROR_STOP=1 <<SQL
-DROP MATERIALIZED VIEW IF EXISTS mv_observations_monthly, mv_quality_grade_counts,
-    mv_top_taxa, mv_top_observers, mv_photo_licenses, mv_observations_by_rank,
-    mv_observations_grid;
-DROP TABLE IF EXISTS observations_old, photos_old, taxa_old, observers_old;
+DROP TABLE IF EXISTS observations_old, photos_old, taxa_old, observers_old CASCADE;
 SQL
 }
 
