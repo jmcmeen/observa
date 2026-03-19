@@ -227,7 +227,10 @@ elif [ -f "$LOCK_DIR/pid" ]; then
     fi
     log "WARNING: Removing stale lock from PID $LOCK_PID"
     rm -rf "$LOCK_DIR"
-    mkdir "$LOCK_DIR"
+    if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+        log "ERROR: Failed to re-acquire lock after stale cleanup. Another import may have started."
+        exit 1
+    fi
     echo $$ > "$LOCK_DIR/pid"
 else
     log "ERROR: Lock exists but no PID file found. Remove $LOCK_DIR manually."

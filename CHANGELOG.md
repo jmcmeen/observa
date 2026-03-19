@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.1.3 — 2026-03-19
+
+### Bug Fixes
+
+- **Race condition in stale lock recovery** — After removing a stale lock, `mkdir` was not checked for failure, allowing two imports to run concurrently if another process grabbed the lock in between. Now aborts if re-acquisition fails.
+
 ## v0.1.2 — 2026-03-19
 
 ### Bug Fixes
