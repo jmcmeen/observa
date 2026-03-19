@@ -338,6 +338,15 @@ docker compose logs --tail 50 postgres  # last 50 lines from postgres
 docker compose logs                     # all services
 ```
 
+## Documentation
+
+| Guide | Description |
+|---|---|
+| [CSV Export Guide](docs/csv-export-guide.md) | Exporting filtered data as CSV for R, Python, Excel, QGIS |
+| [Data Model Reference](docs/data-model.md) | Tables, columns, relationships, indexes, and materialized views |
+| [Custom Dashboards](docs/custom-dashboards.md) | Building your own Grafana dashboards with query examples |
+| [Troubleshooting](docs/troubleshooting.md) | Common problems, error messages, and fixes |
+
 ## Data Source
 
 This project uses the [iNaturalist Open Dataset](https://github.com/inaturalist/inaturalist-open-data), which is hosted on the [AWS Open Data Registry](https://registry.opendata.aws/inaturalist-open-data/). The dataset includes observations, photos, taxa, and observer metadata published under Creative Commons licenses. See the upstream repository for licensing and attribution details.
