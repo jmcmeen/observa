@@ -42,12 +42,11 @@ A Dockerized platform for hosting and exploring [iNaturalist Open Data](https://
 
 4. **Open the dashboard**
 
-   Navigate to [http://localhost:3000](http://localhost:3000) and log in with the credentials from your `.env` file (default: `admin` / `changeme`). Two dashboards are pre-provisioned:
+   Navigate to [http://localhost:3000](http://localhost:3000) and log in with the credentials from your `.env` file (default: `admin` / `changeme`). Four dashboards are pre-provisioned:
 
-   - **iNaturalist Overview** — observations, taxa, maps, and analytics
+   - **iNaturalist Overview** — observations, taxa, maps, and analytics (filterable by quality grade and taxonomic rank)
+   - **Regional Explorer** — parameterized dashboard for any region and taxon (set bounding box, taxon ID, and quality grade via dropdowns)
    - **Import Health** — import duration trends, row counts, and status history
-   - **La Selva Biological Station** — observations, species, seasonal patterns, and map for the La Selva area in Costa Rica
-   - **Steele Creek Park — Frogs** — frog observations, species list, seasonal activity, and map for Steele Creek Park in Bristol, TN
    - **iNaturalist HotSpots** — global observation density heatmap, top hotspots table, and distribution breakdown
 
 ## Configuration

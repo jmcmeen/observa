@@ -185,50 +185,40 @@ WHERE (t.ancestry LIKE '%/20979/%' OR t.taxon_id = 20979)
 SELECT taxon_id, name, rank FROM taxa WHERE name ILIKE '%anura%';
 ```
 
-## Building a regional dashboard — walkthrough
+## Using the Regional Explorer dashboard
 
-This example creates a dashboard for a specific location. Replace the coordinates and taxon filters with your area of interest.
+The **Regional Explorer** is a pre-built parameterized dashboard that works for any region and taxonomic group. Instead of building a dashboard from scratch, set the variables at the top:
 
-### 1. Plan your panels
+| Variable | Description | Default | Example |
+|---|---|---|---|
+| Min Latitude | Southern bound | -90 | 10.40 |
+| Max Latitude | Northern bound | 90 | 10.47 |
+| Min Longitude | Western bound | -180 | -84.05 |
+| Max Longitude | Eastern bound | 180 | -83.97 |
+| Taxon ID | Filter to a taxonomic group (0 = all) | 0 | 20979 (frogs) |
+| Quality Grade | Multi-select filter | All | research |
 
-A typical regional dashboard includes:
+Use [bboxfinder.com](http://bboxfinder.com/) to get bounding box coordinates for your area. To find a taxon ID, query the database:
 
-| Panel | Type | Purpose |
-|---|---|---|
-| Total observations | Stat | Quick overview |
-| Unique species | Stat | Biodiversity metric |
-| Quality grade breakdown | Pie chart | Data quality overview |
-| Observations over time | Timeseries | Seasonal and growth trends |
-| Top species | Bar chart | What's most commonly observed |
-| Observation map | Geomap | Spatial distribution |
-| Species checklist | Table | Detailed reference |
-
-### 2. Define your geographic filter
-
-Pick a bounding box for your area. Use a tool like [bboxfinder.com](http://bboxfinder.com/) to get coordinates:
-
-```
-latitude BETWEEN {south} AND {north}
-AND longitude BETWEEN {west} AND {east}
+```sql
+SELECT taxon_id, name, rank FROM taxa WHERE name ILIKE '%anura%';
 ```
 
-### 3. Create the dashboard
+The dashboard includes 11 panels: stat KPIs, timeseries, species bar chart, quality grade pie chart, taxonomic breakdown, observation map, observer leaderboard, and seasonal patterns — all filtered by your variables.
 
-1. **New dashboard** — Dashboards > New > New dashboard
-2. **Add panels** — Use the queries from the panel types section above, replacing the coordinates with your bounding box
-3. **Set time range** — For observation data, set the dashboard time range to a wide window (e.g., "Last 5 years") or use "All time" since `observed_on` isn't tied to the Grafana time range by default
-4. **Arrange panels** — Drag panels to arrange them. A common layout is stat panels across the top, charts in the middle, and the map/table at the bottom
+## Building a custom dashboard from scratch
 
-### 4. Use dashboard variables (optional)
+If you need panels or queries beyond what the Regional Explorer provides, create a new dashboard manually.
 
-You can add dropdown filters using Grafana variables:
+### 1. Use dashboard variables
 
-1. Go to Dashboard settings > Variables > Add variable
-2. Create a **Query** variable with:
+Variables let users filter without editing SQL. Add them under Dashboard settings > Variables:
+
+1. Create a **Query** variable with:
    - **Name:** `quality_grade`
    - **Query:** `SELECT DISTINCT quality_grade FROM observations WHERE quality_grade IS NOT NULL ORDER BY 1;`
    - **Multi-value:** enabled
-3. Use it in panel queries:
+2. Use it in panel queries:
    ```sql
    WHERE quality_grade IN ($quality_grade)
    ```

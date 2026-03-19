@@ -14,7 +14,7 @@
       "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
-          "rawSql": "SELECT count(*) AS \"Observations\" FROM observations;",
+          "rawSql": "SELECT count(*) AS \"Observations\" FROM observations WHERE ('${quality_grade}' = '$__all' OR quality_grade IN (${quality_grade:sqlstring}));",
           "format": "table",
           "refId": "A"
         }
@@ -119,7 +119,7 @@
       "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
-          "rawSql": "SELECT month AS time, observation_count AS observations FROM mv_observations_monthly ORDER BY 1;",
+          "rawSql": "SELECT month AS time, observation_count AS observations FROM mv_observations_monthly WHERE $__timeFilter(month) ORDER BY 1;",
           "format": "time_series",
           "refId": "A"
         }
@@ -141,7 +141,7 @@
       "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
-          "rawSql": "SELECT name AS taxon, observation_count AS observations FROM mv_top_taxa WHERE rank = 'species' ORDER BY observation_count DESC LIMIT 20;",
+          "rawSql": "SELECT name AS taxon, observation_count AS observations FROM mv_top_taxa WHERE ('${taxonomic_rank}' = '$__all' OR rank = '${taxonomic_rank}') ORDER BY observation_count DESC LIMIT 20;",
           "format": "table",
           "refId": "A"
         }
@@ -318,7 +318,7 @@
       "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
-          "rawSql": "SELECT to_char(to_date(EXTRACT(MONTH FROM month)::text, 'MM'), 'Mon') AS month_name, sum(observation_count) AS observations FROM mv_observations_monthly GROUP BY EXTRACT(MONTH FROM month), month_name ORDER BY EXTRACT(MONTH FROM month);",
+          "rawSql": "SELECT to_char(to_date(EXTRACT(MONTH FROM month)::text, 'MM'), 'Mon') AS month_name, sum(observation_count) AS observations FROM mv_observations_monthly WHERE $__timeFilter(month) GROUP BY EXTRACT(MONTH FROM month), month_name ORDER BY EXTRACT(MONTH FROM month);",
           "format": "table",
           "refId": "A"
         }
@@ -334,7 +334,7 @@
       "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
-          "rawSql": "WITH monthly_new AS (SELECT date_trunc('month', min(observed_on)) AS first_month FROM observations WHERE taxon_id IS NOT NULL GROUP BY taxon_id) SELECT first_month AS time, sum(count(*)) OVER (ORDER BY first_month) AS cumulative_species FROM monthly_new WHERE first_month IS NOT NULL GROUP BY first_month ORDER BY first_month;",
+          "rawSql": "WITH monthly_new AS (SELECT date_trunc('month', min(observed_on)) AS first_month FROM observations WHERE taxon_id IS NOT NULL GROUP BY taxon_id) SELECT first_month AS time, sum(count(*)) OVER (ORDER BY first_month) AS cumulative_species FROM monthly_new WHERE first_month IS NOT NULL AND $__timeFilter(first_month) GROUP BY first_month ORDER BY first_month;",
           "format": "time_series",
           "refId": "A"
         }

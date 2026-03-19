@@ -80,7 +80,7 @@
       "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
-          "rawSql": "SELECT started_at AS time, duration_seconds AS \"Duration (s)\" FROM import_log WHERE status = 'completed' AND duration_seconds IS NOT NULL ORDER BY started_at;",
+          "rawSql": "SELECT started_at AS time, duration_seconds AS \"Duration (s)\" FROM import_log WHERE status = 'completed' AND duration_seconds IS NOT NULL AND $__timeFilter(started_at) ORDER BY started_at;",
           "format": "time_series",
           "refId": "A"
         }
@@ -103,7 +103,7 @@
       "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
-          "rawSql": "SELECT started_at AS time, observations_count AS \"Observations\" FROM import_log WHERE status = 'completed' ORDER BY started_at;",
+          "rawSql": "SELECT started_at AS time, observations_count AS \"Observations\" FROM import_log WHERE status = 'completed' AND $__timeFilter(started_at) ORDER BY started_at;",
           "format": "time_series",
           "refId": "A"
         }
@@ -125,7 +125,7 @@
       "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
-          "rawSql": "SELECT started_at AS time, photos_count AS \"Photos\" FROM import_log WHERE status = 'completed' ORDER BY started_at;",
+          "rawSql": "SELECT started_at AS time, photos_count AS \"Photos\" FROM import_log WHERE status = 'completed' AND $__timeFilter(started_at) ORDER BY started_at;",
           "format": "time_series",
           "refId": "A"
         }

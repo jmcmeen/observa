@@ -1,0 +1,295 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Total Observations",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT count(*) AS \"Observations\" FROM observations o LEFT JOIN taxa t ON o.taxon_id = t.taxon_id WHERE o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} AND (${taxon_id} = 0 OR t.ancestry LIKE '%/' || ${taxon_id}::text || '/%' OR t.taxon_id = ${taxon_id}) AND o.quality_grade IN (${quality_grade:sqlstring});",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 2,
+      "title": "Unique Species",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT count(DISTINCT o.taxon_id) AS \"Species\" FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE t.rank = 'species' AND o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} AND (${taxon_id} = 0 OR t.ancestry LIKE '%/' || ${taxon_id}::text || '/%' OR t.taxon_id = ${taxon_id}) AND o.quality_grade IN (${quality_grade:sqlstring});",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 3,
+      "title": "Unique Observers",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT count(DISTINCT o.observer_id) AS \"Observers\" FROM observations o LEFT JOIN taxa t ON o.taxon_id = t.taxon_id WHERE o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} AND (${taxon_id} = 0 OR t.ancestry LIKE '%/' || ${taxon_id}::text || '/%' OR t.taxon_id = ${taxon_id}) AND o.quality_grade IN (${quality_grade:sqlstring});",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "purple", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 4,
+      "title": "Research Grade %",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT round(100.0 * sum(CASE WHEN o.quality_grade = 'research' THEN 1 ELSE 0 END) / NULLIF(count(*), 0), 1) AS \"Research Grade %\" FROM observations o LEFT JOIN taxa t ON o.taxon_id = t.taxon_id WHERE o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} AND (${taxon_id} = 0 OR t.ancestry LIKE '%/' || ${taxon_id}::text || '/%' OR t.taxon_id = ${taxon_id});",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 30 }, { "color": "green", "value": 50 }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 5,
+      "title": "Observations Over Time",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT date_trunc('month', o.observed_on) AS time, count(*) AS observations FROM observations o LEFT JOIN taxa t ON o.taxon_id = t.taxon_id WHERE o.observed_on IS NOT NULL AND $__timeFilter(o.observed_on) AND o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} AND (${taxon_id} = 0 OR t.ancestry LIKE '%/' || ${taxon_id}::text || '/%' OR t.taxon_id = ${taxon_id}) AND o.quality_grade IN (${quality_grade:sqlstring}) GROUP BY 1 ORDER BY 1;",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 20, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list" }, "tooltip": { "mode": "single" } }
+    },
+    {
+      "id": 6,
+      "title": "Top 20 Species",
+      "type": "barchart",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT t.name AS species, count(*) AS observations FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE t.rank = 'species' AND o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} AND (${taxon_id} = 0 OR t.ancestry LIKE '%/' || ${taxon_id}::text || '/%' OR t.taxon_id = ${taxon_id}) AND o.quality_grade IN (${quality_grade:sqlstring}) GROUP BY t.name ORDER BY observations DESC LIMIT 20;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": { "orientation": "horizontal" }
+    },
+    {
+      "id": 7,
+      "title": "Quality Grade Distribution",
+      "type": "piechart",
+      "gridPos": { "h": 10, "w": 6, "x": 12, "y": 12 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT o.quality_grade AS grade, count(*) AS total FROM observations o LEFT JOIN taxa t ON o.taxon_id = t.taxon_id WHERE o.quality_grade IS NOT NULL AND o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} AND (${taxon_id} = 0 OR t.ancestry LIKE '%/' || ${taxon_id}::text || '/%' OR t.taxon_id = ${taxon_id}) GROUP BY o.quality_grade ORDER BY total DESC;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "right" }, "pieType": "donut" }
+    },
+    {
+      "id": 8,
+      "title": "Taxonomic Breakdown",
+      "type": "piechart",
+      "gridPos": { "h": 10, "w": 6, "x": 18, "y": 12 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT t.rank, count(*) AS total FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE t.rank IS NOT NULL AND o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} AND (${taxon_id} = 0 OR t.ancestry LIKE '%/' || ${taxon_id}::text || '/%' OR t.taxon_id = ${taxon_id}) AND o.quality_grade IN (${quality_grade:sqlstring}) GROUP BY t.rank ORDER BY total DESC;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "right" }, "pieType": "donut" }
+    },
+    {
+      "id": 9,
+      "title": "Observation Map",
+      "type": "geomap",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 22 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT o.latitude, o.longitude, t.name AS species, o.quality_grade FROM observations o LEFT JOIN taxa t ON o.taxon_id = t.taxon_id WHERE o.geom IS NOT NULL AND o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} AND (${taxon_id} = 0 OR t.ancestry LIKE '%/' || ${taxon_id}::text || '/%' OR t.taxon_id = ${taxon_id}) AND o.quality_grade IN (${quality_grade:sqlstring}) LIMIT 5000;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": {
+        "view": { "id": "fit", "lat": 0, "lon": 0, "zoom": 2 },
+        "basemap": { "type": "default", "name": "OpenStreetMap" },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Observations",
+            "config": {
+              "size": { "fixed": 5 },
+              "color": { "fixed": "green" },
+              "fillOpacity": 0.6
+            },
+            "location": { "mode": "coords", "latitude": "latitude", "longitude": "longitude" }
+          }
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "title": "Top Observers",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 34 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT ob.login, ob.name, count(*) AS observations, count(DISTINCT o.taxon_id) AS species_seen FROM observations o LEFT JOIN taxa t ON o.taxon_id = t.taxon_id JOIN observers ob ON o.observer_id = ob.observer_id WHERE o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} AND (${taxon_id} = 0 OR t.ancestry LIKE '%/' || ${taxon_id}::text || '/%' OR t.taxon_id = ${taxon_id}) AND o.quality_grade IN (${quality_grade:sqlstring}) GROUP BY ob.login, ob.name ORDER BY observations DESC LIMIT 20;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": { "showHeader": true }
+    },
+    {
+      "id": 11,
+      "title": "Seasonal Patterns",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 34 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT to_char(to_date(EXTRACT(MONTH FROM o.observed_on)::text, 'MM'), 'Mon') AS month_name, count(*) AS observations FROM observations o LEFT JOIN taxa t ON o.taxon_id = t.taxon_id WHERE o.observed_on IS NOT NULL AND o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} AND (${taxon_id} = 0 OR t.ancestry LIKE '%/' || ${taxon_id}::text || '/%' OR t.taxon_id = ${taxon_id}) AND o.quality_grade IN (${quality_grade:sqlstring}) GROUP BY EXTRACT(MONTH FROM o.observed_on), month_name ORDER BY EXTRACT(MONTH FROM o.observed_on);",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": { "orientation": "vertical" }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["inaturalist", "observa", "regional"],
+  "templating": {
+    "list": [
+      {
+        "name": "min_lat",
+        "label": "Min Latitude",
+        "description": "Southern bound of the bounding box",
+        "type": "textbox",
+        "query": "-90",
+        "current": { "text": "-90", "value": "-90" }
+      },
+      {
+        "name": "max_lat",
+        "label": "Max Latitude",
+        "description": "Northern bound of the bounding box",
+        "type": "textbox",
+        "query": "90",
+        "current": { "text": "90", "value": "90" }
+      },
+      {
+        "name": "min_lon",
+        "label": "Min Longitude",
+        "description": "Western bound of the bounding box",
+        "type": "textbox",
+        "query": "-180",
+        "current": { "text": "-180", "value": "-180" }
+      },
+      {
+        "name": "max_lon",
+        "label": "Max Longitude",
+        "description": "Eastern bound of the bounding box",
+        "type": "textbox",
+        "query": "180",
+        "current": { "text": "180", "value": "180" }
+      },
+      {
+        "name": "taxon_id",
+        "label": "Taxon ID",
+        "description": "Filter to a taxonomic group (e.g. 3 = Aves, 20979 = Anura). Set to 0 for all taxa.",
+        "type": "textbox",
+        "query": "0",
+        "current": { "text": "0", "value": "0" }
+      },
+      {
+        "name": "quality_grade",
+        "label": "Quality Grade",
+        "type": "custom",
+        "query": "research,needs_id,casual",
+        "multi": true,
+        "includeAll": true,
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "options": [
+          { "selected": true, "text": "All", "value": "$__all" },
+          { "selected": false, "text": "research", "value": "research" },
+          { "selected": false, "text": "needs_id", "value": "needs_id" },
+          { "selected": false, "text": "casual", "value": "casual" }
+        ]
+      }
+    ]
+  },
+  "time": { "from": "now-5y", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Regional Explorer",
+  "uid": "regional-explorer",
+  "version": 1
+}

@@ -1,0 +1,214 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Total Photos in Filter",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT count(*) AS \"Photos\" FROM photos p JOIN observations o ON p.observation_uuid = o.observation_uuid WHERE o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} AND ('${license_filter}' = 'all' OR p.license = '${license_filter}');",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 2,
+      "title": "Unique Species Photographed",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT count(DISTINCT o.taxon_id) AS \"Species\" FROM photos p JOIN observations o ON p.observation_uuid = o.observation_uuid WHERE o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} AND ('${license_filter}' = 'all' OR p.license = '${license_filter}');",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 3,
+      "title": "Unique Photographers",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT count(DISTINCT p.observer_id) AS \"Photographers\" FROM photos p JOIN observations o ON p.observation_uuid = o.observation_uuid WHERE o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} AND ('${license_filter}' = 'all' OR p.license = '${license_filter}');",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "purple", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 4,
+      "title": "License Distribution",
+      "type": "piechart",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT p.license, count(*) AS total FROM photos p JOIN observations o ON p.observation_uuid = o.observation_uuid WHERE p.license IS NOT NULL AND o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} GROUP BY p.license ORDER BY total DESC;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "right" }, "pieType": "donut" }
+    },
+    {
+      "id": 5,
+      "title": "Photos by Extension",
+      "type": "piechart",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT COALESCE(p.extension, 'unknown') AS format, count(*) AS total FROM photos p JOIN observations o ON p.observation_uuid = o.observation_uuid WHERE o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} GROUP BY p.extension ORDER BY total DESC;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "right" }, "pieType": "donut" }
+    },
+    {
+      "id": 6,
+      "title": "Photo Details with URLs",
+      "description": "Photo URLs link to iNaturalist Open Data S3 bucket. Copy a URL to view the image.",
+      "type": "table",
+      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 14 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT 'https://inaturalist-open-data.s3.amazonaws.com/photos/' || p.photo_id || '/medium.' || COALESCE(p.extension, 'jpeg') AS photo_url, t.name AS species, o.observed_on, ob.login AS observer, p.license, p.width, p.height, round(o.latitude::numeric, 3) AS lat, round(o.longitude::numeric, 3) AS lon FROM photos p JOIN observations o ON p.observation_uuid = o.observation_uuid LEFT JOIN taxa t ON o.taxon_id = t.taxon_id LEFT JOIN observers ob ON o.observer_id = ob.observer_id WHERE p.position = 0 AND o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} AND ('${license_filter}' = 'all' OR p.license = '${license_filter}') ORDER BY o.observed_on DESC LIMIT 100;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "photo_url" },
+            "properties": [
+              { "id": "links", "value": [{ "title": "View Photo", "url": "${__data.fields.photo_url}", "targetBlank": true }] }
+            ]
+          }
+        ]
+      },
+      "options": { "showHeader": true }
+    },
+    {
+      "id": 7,
+      "title": "Top Photographers",
+      "type": "barchart",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 28 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT COALESCE(ob.login, 'observer_' || ob.observer_id) AS photographer, count(*) AS photos FROM photos p JOIN observations o ON p.observation_uuid = o.observation_uuid JOIN observers ob ON p.observer_id = ob.observer_id WHERE o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} AND ('${license_filter}' = 'all' OR p.license = '${license_filter}') GROUP BY ob.login, ob.observer_id ORDER BY photos DESC LIMIT 20;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": { "orientation": "horizontal" }
+    },
+    {
+      "id": 8,
+      "title": "Most Photographed Species",
+      "type": "barchart",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 28 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT t.name AS species, count(*) AS photos FROM photos p JOIN observations o ON p.observation_uuid = o.observation_uuid JOIN taxa t ON o.taxon_id = t.taxon_id WHERE t.rank = 'species' AND o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} AND ('${license_filter}' = 'all' OR p.license = '${license_filter}') GROUP BY t.name ORDER BY photos DESC LIMIT 20;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": { "orientation": "horizontal" }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["inaturalist", "observa", "photos"],
+  "templating": {
+    "list": [
+      {
+        "name": "min_lat",
+        "label": "Min Latitude",
+        "type": "textbox",
+        "query": "-90",
+        "current": { "text": "-90", "value": "-90" }
+      },
+      {
+        "name": "max_lat",
+        "label": "Max Latitude",
+        "type": "textbox",
+        "query": "90",
+        "current": { "text": "90", "value": "90" }
+      },
+      {
+        "name": "min_lon",
+        "label": "Min Longitude",
+        "type": "textbox",
+        "query": "-180",
+        "current": { "text": "-180", "value": "-180" }
+      },
+      {
+        "name": "max_lon",
+        "label": "Max Longitude",
+        "type": "textbox",
+        "query": "180",
+        "current": { "text": "180", "value": "180" }
+      },
+      {
+        "name": "license_filter",
+        "label": "License",
+        "description": "Filter photos by Creative Commons license",
+        "type": "custom",
+        "query": "all,CC0,CC-BY,CC-BY-NC,CC-BY-SA,CC-BY-ND,CC-BY-NC-SA,CC-BY-NC-ND",
+        "multi": false,
+        "includeAll": false,
+        "current": { "text": "all", "value": "all" }
+      }
+    ]
+  },
+  "time": { "from": "now-5y", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Photo Gallery",
+  "uid": "photo-gallery",
+  "version": 1
+}

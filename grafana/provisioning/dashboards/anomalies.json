@@ -1,0 +1,212 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Observations with Anomaly Scores",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT count(*) AS \"With Scores\" FROM observations WHERE anomaly_score IS NOT NULL;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 2,
+      "title": "Mean Anomaly Score",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT round(avg(anomaly_score)::numeric, 4) AS \"Mean Score\" FROM observations WHERE anomaly_score IS NOT NULL;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 3,
+      "title": "High Anomaly Observations (>0.9)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT count(*) AS \"High Anomaly\" FROM observations WHERE anomaly_score > ${anomaly_threshold};",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 4,
+      "title": "Anomaly Score Distribution",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT CASE WHEN anomaly_score < 0.1 THEN '0.0-0.1' WHEN anomaly_score < 0.2 THEN '0.1-0.2' WHEN anomaly_score < 0.3 THEN '0.2-0.3' WHEN anomaly_score < 0.4 THEN '0.3-0.4' WHEN anomaly_score < 0.5 THEN '0.4-0.5' WHEN anomaly_score < 0.6 THEN '0.5-0.6' WHEN anomaly_score < 0.7 THEN '0.6-0.7' WHEN anomaly_score < 0.8 THEN '0.7-0.8' WHEN anomaly_score < 0.9 THEN '0.8-0.9' ELSE '0.9-1.0' END AS score_range, count(*) AS observations FROM observations WHERE anomaly_score IS NOT NULL GROUP BY 1 ORDER BY 1;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": { "orientation": "vertical" }
+    },
+    {
+      "id": 5,
+      "title": "Monthly Anomaly Score Trend",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT date_trunc('month', observed_on) AS time, round(avg(anomaly_score)::numeric, 4) AS avg_score, count(*) FILTER (WHERE anomaly_score > ${anomaly_threshold}) AS high_anomaly_count FROM observations WHERE observed_on IS NOT NULL AND anomaly_score IS NOT NULL AND $__timeFilter(observed_on) GROUP BY 1 ORDER BY 1;",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 10, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 6,
+      "title": "High Anomaly Observation Map",
+      "type": "geomap",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 12 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT o.latitude, o.longitude, round(o.anomaly_score::numeric, 3) AS score, t.name AS species, o.quality_grade FROM observations o LEFT JOIN taxa t ON o.taxon_id = t.taxon_id WHERE o.anomaly_score > ${anomaly_threshold} AND o.geom IS NOT NULL ORDER BY o.anomaly_score DESC LIMIT 5000;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": {
+        "view": { "id": "coords", "lat": 20, "lon": 0, "zoom": 2 },
+        "basemap": { "type": "default", "name": "OpenStreetMap" },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "High Anomaly Observations",
+            "config": {
+              "size": { "field": "score", "min": 3, "max": 15 },
+              "color": { "fixed": "red" },
+              "fillOpacity": 0.6
+            },
+            "location": { "mode": "coords", "latitude": "latitude", "longitude": "longitude" }
+          }
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "title": "Top 50 Most Anomalous Observations",
+      "type": "table",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 24 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT round(o.anomaly_score::numeric, 4) AS score, t.name AS species, t.rank, o.quality_grade, o.observed_on, round(o.latitude::numeric, 3) AS lat, round(o.longitude::numeric, 3) AS lon, o.observation_uuid FROM observations o LEFT JOIN taxa t ON o.taxon_id = t.taxon_id WHERE o.anomaly_score IS NOT NULL ORDER BY o.anomaly_score DESC LIMIT 50;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": { "showHeader": true }
+    },
+    {
+      "id": 8,
+      "title": "Top Taxa by Mean Anomaly Score",
+      "type": "barchart",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 34 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT t.name AS species, round(avg(o.anomaly_score)::numeric, 4) AS avg_score, count(*) AS observations FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE o.anomaly_score IS NOT NULL AND t.rank = 'species' GROUP BY t.name HAVING count(*) >= 10 ORDER BY avg_score DESC LIMIT 20;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": { "orientation": "horizontal" }
+    },
+    {
+      "id": 9,
+      "title": "Anomaly Score by Taxonomic Rank",
+      "type": "barchart",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 34 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT t.rank, round(avg(o.anomaly_score)::numeric, 4) AS avg_score, count(*) AS observations FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE o.anomaly_score IS NOT NULL AND t.rank IS NOT NULL GROUP BY t.rank ORDER BY avg_score DESC;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": { "orientation": "horizontal" }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["inaturalist", "observa", "anomaly"],
+  "templating": {
+    "list": [
+      {
+        "name": "anomaly_threshold",
+        "label": "Anomaly Threshold",
+        "description": "Minimum anomaly_score to consider 'high anomaly'",
+        "type": "custom",
+        "query": "0.5,0.6,0.7,0.8,0.9,0.95",
+        "multi": false,
+        "includeAll": false,
+        "current": { "text": "0.9", "value": "0.9" }
+      }
+    ]
+  },
+  "time": { "from": "now-5y", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Anomaly Detection",
+  "uid": "anomaly-detection",
+  "version": 1
+}

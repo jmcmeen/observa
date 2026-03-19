@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.1.4 — 2026-03-19
+
+### Bug Fixes
+
+- **Staging index creation fails on retry** — `CREATE INDEX` on staging tables failed with "relation already exists" if indexes carried over from a previous run or cached image. Changed all staging index statements to `CREATE INDEX IF NOT EXISTS` for idempotent execution.
+
+### Features
+
+- **Regional Explorer dashboard** — New parameterized dashboard that works for any region and taxonomic group. Set bounding box coordinates, taxon ID, and quality grade via dropdown variables. Replaces the hardcoded La Selva and Steele Creek dashboards.
+- **Overview dashboard variables wired** — The `quality_grade` and `taxonomic_rank` variables were defined but unused. Now `quality_grade` filters Total Observations and `taxonomic_rank` filters the Top 20 Taxa panel.
+- **Dashboard time picker wired** — The Grafana time range picker was visible but ignored by all queries. Timeseries panels in Overview, Regional Explorer, and Import Health now respect the selected time range via `$__timeFilter()` macros.
+- **Parallel S3 downloads** — The importer now downloads all 4 data files concurrently instead of sequentially, reducing download time by up to 4x on the initial import.
+- **Anomaly Detection dashboard** — New dashboard visualizing the `anomaly_score` column: score distribution, monthly trends, geographic map of high-anomaly observations, top anomalous species, and configurable threshold variable.
+- **Observer Activity dashboard** — New dashboard focused on observer engagement: new observers over time, cumulative growth, activity distribution, top observers with species diversity, and monthly active observer counts.
+- **BioBlitz Event dashboard** — New parameterized dashboard for time-bounded citizen science events: configurable start/end dates and bounding box, species accumulation curve, participant leaderboard, daily activity breakdown, and observation map.
+- **Photo Gallery dashboard** — New dashboard for browsing photo metadata: license and format distribution, clickable photo URLs to S3, top photographers, most-photographed species, and license filter variable.
+- **Multi-grid resolution for HotSpots** — The HotSpots dashboard now has a grid resolution variable (0.1 to 5.0 degrees) so users can zoom into dense areas or zoom out for continental views. Queries compute on the fly instead of using the fixed 1-degree materialized view.
+
+### Documentation
+
+- Added data model reference, troubleshooting guide, and custom dashboards guide to `docs/`.
+- Updated CSV export guide and README with new dashboard descriptions.
+
 ## v0.1.3 — 2026-03-19
 
 ### Bug Fixes
