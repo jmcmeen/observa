@@ -1,0 +1,268 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Total Observations",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT count(*) AS \"Observations\" FROM observations WHERE observed_on BETWEEN '${start_date}' AND '${end_date}' AND latitude BETWEEN ${min_lat} AND ${max_lat} AND longitude BETWEEN ${min_lon} AND ${max_lon};",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 2,
+      "title": "Species Found",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT count(DISTINCT o.taxon_id) AS \"Species\" FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE t.rank = 'species' AND o.observed_on BETWEEN '${start_date}' AND '${end_date}' AND o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon};",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 3,
+      "title": "Participants",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT count(DISTINCT observer_id) AS \"Participants\" FROM observations WHERE observed_on BETWEEN '${start_date}' AND '${end_date}' AND latitude BETWEEN ${min_lat} AND ${max_lat} AND longitude BETWEEN ${min_lon} AND ${max_lon};",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "purple", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 4,
+      "title": "Research Grade %",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT round(100.0 * sum(CASE WHEN quality_grade = 'research' THEN 1 ELSE 0 END) / NULLIF(count(*), 0), 1) AS \"Research %\" FROM observations WHERE observed_on BETWEEN '${start_date}' AND '${end_date}' AND latitude BETWEEN ${min_lat} AND ${max_lat} AND longitude BETWEEN ${min_lon} AND ${max_lon};",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 30 }, { "color": "green", "value": 50 }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 5,
+      "title": "Species Accumulation Curve",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "WITH daily_new AS (SELECT date_trunc('day', min(o.observed_on)) AS first_day FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE t.rank = 'species' AND o.observed_on BETWEEN '${start_date}' AND '${end_date}' AND o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} GROUP BY o.taxon_id) SELECT first_day AS time, sum(count(*)) OVER (ORDER BY first_day) AS cumulative_species FROM daily_new WHERE first_day IS NOT NULL GROUP BY first_day ORDER BY first_day;",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "custom": { "fillOpacity": 15, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list" }, "tooltip": { "mode": "single" } }
+    },
+    {
+      "id": 6,
+      "title": "Species List",
+      "type": "barchart",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT t.name AS species, count(*) AS observations FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE t.rank = 'species' AND o.observed_on BETWEEN '${start_date}' AND '${end_date}' AND o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} GROUP BY t.name ORDER BY observations DESC LIMIT 30;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": { "orientation": "horizontal" }
+    },
+    {
+      "id": 7,
+      "title": "Taxonomic Breakdown",
+      "type": "piechart",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT t.rank, count(*) AS total FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE t.rank IS NOT NULL AND o.observed_on BETWEEN '${start_date}' AND '${end_date}' AND o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} GROUP BY t.rank ORDER BY total DESC;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "right" }, "pieType": "donut" }
+    },
+    {
+      "id": 8,
+      "title": "Observation Map",
+      "type": "geomap",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 22 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT o.latitude, o.longitude, t.name AS species, ob.login AS observer FROM observations o LEFT JOIN taxa t ON o.taxon_id = t.taxon_id LEFT JOIN observers ob ON o.observer_id = ob.observer_id WHERE o.geom IS NOT NULL AND o.observed_on BETWEEN '${start_date}' AND '${end_date}' AND o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} LIMIT 5000;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": {
+        "view": { "id": "fit", "lat": 0, "lon": 0, "zoom": 2 },
+        "basemap": { "type": "default", "name": "OpenStreetMap" },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Observations",
+            "config": {
+              "size": { "fixed": 5 },
+              "color": { "fixed": "green" },
+              "fillOpacity": 0.6
+            },
+            "location": { "mode": "coords", "latitude": "latitude", "longitude": "longitude" }
+          }
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "title": "Participant Leaderboard",
+      "type": "table",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 34 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT ob.login, ob.name, count(*) AS observations, count(DISTINCT o.taxon_id) AS species FROM observations o JOIN observers ob ON o.observer_id = ob.observer_id WHERE o.observed_on BETWEEN '${start_date}' AND '${end_date}' AND o.latitude BETWEEN ${min_lat} AND ${max_lat} AND o.longitude BETWEEN ${min_lon} AND ${max_lon} GROUP BY ob.login, ob.name ORDER BY observations DESC LIMIT 30;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": { "showHeader": true }
+    },
+    {
+      "id": 10,
+      "title": "Daily Activity",
+      "type": "barchart",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 34 },
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "targets": [
+        {
+          "rawSql": "SELECT to_char(observed_on, 'YYYY-MM-DD') AS day, count(*) AS observations, count(DISTINCT observer_id) AS participants FROM observations WHERE observed_on BETWEEN '${start_date}' AND '${end_date}' AND latitude BETWEEN ${min_lat} AND ${max_lat} AND longitude BETWEEN ${min_lon} AND ${max_lon} GROUP BY observed_on ORDER BY observed_on;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": { "orientation": "vertical" }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["inaturalist", "observa", "bioblitz", "event"],
+  "templating": {
+    "list": [
+      {
+        "name": "start_date",
+        "label": "Event Start Date",
+        "description": "Start date of the bioblitz event (YYYY-MM-DD)",
+        "type": "textbox",
+        "query": "2025-06-01",
+        "current": { "text": "2025-06-01", "value": "2025-06-01" }
+      },
+      {
+        "name": "end_date",
+        "label": "Event End Date",
+        "description": "End date of the bioblitz event (YYYY-MM-DD)",
+        "type": "textbox",
+        "query": "2025-06-07",
+        "current": { "text": "2025-06-07", "value": "2025-06-07" }
+      },
+      {
+        "name": "min_lat",
+        "label": "Min Latitude",
+        "type": "textbox",
+        "query": "-90",
+        "current": { "text": "-90", "value": "-90" }
+      },
+      {
+        "name": "max_lat",
+        "label": "Max Latitude",
+        "type": "textbox",
+        "query": "90",
+        "current": { "text": "90", "value": "90" }
+      },
+      {
+        "name": "min_lon",
+        "label": "Min Longitude",
+        "type": "textbox",
+        "query": "-180",
+        "current": { "text": "-180", "value": "-180" }
+      },
+      {
+        "name": "max_lon",
+        "label": "Max Longitude",
+        "type": "textbox",
+        "query": "180",
+        "current": { "text": "180", "value": "180" }
+      }
+    ]
+  },
+  "time": { "from": "now-30d", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "BioBlitz Event",
+  "uid": "bioblitz-event",
+  "version": 1
+}
