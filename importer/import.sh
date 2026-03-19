@@ -55,32 +55,45 @@ wait_for_postgres() {
     done
 }
 
+download_one() {
+    file="$1"
+    ETAG_FILE="${CACHE_DIR}/${file}.etag"
+    CACHED_FILE="${CACHE_DIR}/${file}"
+
+    # Get the current ETag from S3
+    REMOTE_ETAG=$(aws s3api head-object ${AWS_ARGS} \
+        --bucket inaturalist-open-data --key "${file}" \
+        --query ETag --output text 2>/dev/null || echo "")
+
+    # Compare with cached ETag
+    if [ -f "$CACHED_FILE" ] && [ -f "$ETAG_FILE" ]; then
+        LOCAL_ETAG=$(cat "$ETAG_FILE")
+        if [ "$REMOTE_ETAG" = "$LOCAL_ETAG" ]; then
+            log "  ${file}: unchanged (cached)"
+            return
+        fi
+    fi
+
+    log "  ${file}: downloading..."
+    aws s3 cp ${AWS_ARGS} "${S3_BUCKET}/${file}" "${CACHED_FILE}"
+    echo "$REMOTE_ETAG" > "$ETAG_FILE"
+    touch "${CACHE_DIR}/.files_changed"
+}
+
 download_files() {
     mkdir -p "${CACHE_DIR}"
+    rm -f "${CACHE_DIR}/.files_changed"
     log "Checking for updated data files on S3..."
+
     for file in observations.csv.gz observers.csv.gz photos.csv.gz taxa.csv.gz; do
-        ETAG_FILE="${CACHE_DIR}/${file}.etag"
-        CACHED_FILE="${CACHE_DIR}/${file}"
-
-        # Get the current ETag from S3
-        REMOTE_ETAG=$(aws s3api head-object ${AWS_ARGS} \
-            --bucket inaturalist-open-data --key "${file}" \
-            --query ETag --output text 2>/dev/null || echo "")
-
-        # Compare with cached ETag
-        if [ -f "$CACHED_FILE" ] && [ -f "$ETAG_FILE" ]; then
-            LOCAL_ETAG=$(cat "$ETAG_FILE")
-            if [ "$REMOTE_ETAG" = "$LOCAL_ETAG" ]; then
-                log "  ${file}: unchanged (cached)"
-                continue
-            fi
-        fi
-
-        log "  ${file}: downloading..."
-        aws s3 cp ${AWS_ARGS} "${S3_BUCKET}/${file}" "${CACHED_FILE}"
-        echo "$REMOTE_ETAG" > "$ETAG_FILE"
-        FILES_CHANGED=1
+        download_one "$file" &
     done
+    wait
+
+    if [ -f "${CACHE_DIR}/.files_changed" ]; then
+        FILES_CHANGED=1
+        rm -f "${CACHE_DIR}/.files_changed"
+    fi
 }
 
 validate_files() {
