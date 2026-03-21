@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.2.0 — 2026-03-20
+
+### Security
+
+- **Default credential check expanded** — The importer now refuses to start if `GF_SECURITY_ADMIN_PASSWORD` is still set to `changeme`, in addition to the existing `PGPASSWORD` check. Added a security callout to the Quick Start section of the README.
+
+### Reliability
+
+- **Index on import_log.started_at** — Added a descending index on `started_at` to support the hung-import alert query efficiently as import history grows.
+
+### Performance
+
+- **Non-blocking materialized view refresh** — Replaced the DROP/CREATE pattern for materialized views with a build-and-swap approach. New views are built under temporary names while dashboards continue reading existing views, then swapped in atomically. Dashboards no longer return errors or stale during view rebuilds.
+
+### Features
+
+- **Spatial query API endpoint** — Added `observations_near(lat, lon, radius_km, lim)` PostgreSQL function for finding observations within a radius of a geographic point. Auto-exposed via PostgREST at `/rpc/observations_near`. Returns results ordered by distance with `distance_m` in meters.
+
+### Documentation
+
+- **Architecture Decisions section** — Added an Architecture section to the README explaining the swap-table import pattern, materialized view rebuild strategy, file-lock concurrency control, and read-only API role separation.
+- Updated Grafana Alerts section to include the hung-import alert.
+
 ## v0.1.4 — 2026-03-19
 
 ### Bug Fixes

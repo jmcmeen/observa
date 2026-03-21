@@ -48,7 +48,9 @@ services:
       PGUSER: ${POSTGRES_USER:-observa}
       PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       PGDATABASE: ${POSTGRES_DB:-inaturalist}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:?Set GF_SECURITY_ADMIN_PASSWORD in .env}
       IMPORT_CRON: ${IMPORT_CRON:-0 3 * * *}
+      ROW_DROP_THRESHOLD: ${ROW_DROP_THRESHOLD:-50}
     volumes:
       - ./db/scripts:/scripts:ro
       - import_cache:/cache
@@ -77,15 +79,14 @@ services:
 
   backup:
     build: ./backup
-    restart: "no"
-    profiles:
-      - backup
+    restart: unless-stopped
     environment:
       PGHOST: postgres
       PGUSER: ${POSTGRES_USER:-observa}
       PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       PGDATABASE: ${POSTGRES_DB:-inaturalist}
       BACKUP_RETENTION: ${BACKUP_RETENTION:-4}
+      BACKUP_CRON: ${BACKUP_CRON:-0 2 * * 0}
     volumes:
       - backup_data:/backups
     depends_on:

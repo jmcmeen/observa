@@ -7,6 +7,11 @@ if [ "$PGPASSWORD" = "changeme" ]; then
   exit 1
 fi
 
+if [ "$GF_SECURITY_ADMIN_PASSWORD" = "changeme" ]; then
+  echo "FATAL: GF_SECURITY_ADMIN_PASSWORD is still set to 'changeme'. Set a real password in .env before starting." >&2
+  exit 1
+fi
+
 # Generate crontab from environment variable
 echo "${IMPORT_CRON:-0 3 * * *} /bin/sh /import.sh >> /proc/1/fd/1 2>&1" > /var/spool/cron/crontabs/root
 

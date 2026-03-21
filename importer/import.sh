@@ -127,15 +127,16 @@ validate_files() {
         esac
     done
 
-    # Check row counts against previous import (abort if < 50% of previous)
+    # Check row counts against previous import (abort if drop exceeds threshold)
+    ROW_DROP_THRESHOLD=${ROW_DROP_THRESHOLD:-50}
     PREV_OBS_COUNT=$(psql -qtAX -c "SELECT COALESCE(observations_count, 0) FROM import_log WHERE status = 'completed' ORDER BY id DESC LIMIT 1;" 2>/dev/null || echo "0")
     if [ "$PREV_OBS_COUNT" -gt 0 ] 2>/dev/null; then
         # awk END{NR} counts records correctly even without a trailing newline
         NEW_OBS_LINES=$(awk 'END{print NR}' "${DATA_DIR}/observations.csv")
         NEW_OBS_LINES=$((NEW_OBS_LINES - 1))  # subtract header
-        THRESHOLD=$((PREV_OBS_COUNT / 2))
+        THRESHOLD=$((PREV_OBS_COUNT * (100 - ROW_DROP_THRESHOLD) / 100))
         if [ "$NEW_OBS_LINES" -lt "$THRESHOLD" ]; then
-            log "ERROR: observations.csv has ${NEW_OBS_LINES} rows, less than 50% of previous import (${PREV_OBS_COUNT}). Aborting."
+            log "ERROR: observations.csv has ${NEW_OBS_LINES} rows, more than ${ROW_DROP_THRESHOLD}% drop from previous import (${PREV_OBS_COUNT}). Aborting."
             exit 1
         fi
     fi
@@ -209,7 +210,7 @@ SQL
 
     log "Dropping old tables..."
     psql -v ON_ERROR_STOP=1 <<SQL
-DROP TABLE IF EXISTS observations_old, photos_old, taxa_old, observers_old CASCADE;
+DROP TABLE IF EXISTS observations_old, photos_old, taxa_old, observers_old;
 SQL
 }
 

@@ -19,10 +19,13 @@ A Dockerized platform for hosting and exploring [iNaturalist Open Data](https://
 
    Edit `.env` to set your passwords:
 
-   ```
+   ```ini
    POSTGRES_PASSWORD=your_secure_password
+   API_USER_PASSWORD=your_api_password
    GF_SECURITY_ADMIN_PASSWORD=your_grafana_password
    ```
+
+   > **Security:** The importer will refuse to start if any password is still set to `changeme`. Choose strong, unique passwords for each service before proceeding.
 
 2. **Start the services**
 
@@ -62,6 +65,8 @@ All settings are in `.env` (see `.env.example` for defaults):
 | `GF_SECURITY_ADMIN_USER` | Grafana admin username | `admin` |
 | `GF_SECURITY_ADMIN_PASSWORD` | Grafana admin password | **(required)** |
 | `IMPORT_CRON` | Import schedule (cron expression) | `0 3 * * *` (daily 3 AM) |
+| `ROW_DROP_THRESHOLD` | Max allowed row count drop % before aborting import | `50` |
+| `BACKUP_CRON` | Backup schedule (cron expression) | `0 2 * * 0` (weekly Sunday 2 AM) |
 | `BACKUP_RETENTION` | Number of database backups to keep | `4` |
 
 ### PostgreSQL tuning
@@ -88,7 +93,7 @@ See comments in `db/postgresql.conf` for details on worst-case memory usage unde
 | `grafana` | 3000 | Dashboard UI with alerting |
 | `importer` | — | Cron-based ETL container (no exposed ports) |
 | `postgrest` | 3001 | Read-only REST API over the database |
-| `backup` | — | On-demand database backup (via `--profile backup`) |
+| `backup` | — | Scheduled database backup (weekly by default) |
 
 ## Daily Imports
 
@@ -150,6 +155,34 @@ curl "http://localhost:3001/observations?quality_grade=eq.research&limit=50"
 curl "http://localhost:3001/mv_quality_grade_counts"
 ```
 
+### Spatial queries
+
+Find observations within a radius of a geographic point using the `observations_near` RPC function:
+
+```bash
+# Observations within 50 km of Great Smoky Mountains (lat 35.5, lon -83.2)
+curl "http://localhost:3001/rpc/observations_near?lat=35.5&lon=-83.2&radius_km=50"
+
+# Nearest 20 observations to a point (default radius: 10 km)
+curl "http://localhost:3001/rpc/observations_near?lat=40.7&lon=-74.0&lim=20"
+```
+
+Returns `observation_uuid`, `taxon_id`, `quality_grade`, `observed_on`, and `distance_m` (distance in meters from the query point), ordered by distance.
+
+### Taxa search
+
+Search taxa by name with fuzzy matching (typo-tolerant):
+
+```bash
+# Search for "robin" (substring + similarity match)
+curl "http://localhost:3001/rpc/taxa_search?query=robin"
+
+# Fuzzy search for a misspelled name
+curl "http://localhost:3001/rpc/taxa_search?query=turdus%20migratorus&lim=5"
+```
+
+Returns `taxon_id`, `name`, `rank`, `rank_level`, `active`, and `similarity` score, ordered by best match.
+
 See the [PostgREST documentation](https://postgrest.org/en/stable/references/api.html) for full query syntax.
 
 ### CSV export
@@ -192,21 +225,21 @@ To enable JWT authentication:
 
 ## Database Backup
 
-Run a backup on demand:
+Backups run automatically on the schedule defined by `BACKUP_CRON` (default: weekly Sunday 2 AM). To trigger an immediate backup:
 
 ```bash
-docker compose run --rm --profile backup backup
+docker compose exec backup /backup.sh
 ```
 
 Backups are stored in the `backup_data` volume in PostgreSQL custom format. To restore, copy the dump from the volume and pipe it into `pg_restore`:
 
 ```bash
 # List available backups
-docker compose run --rm --profile backup --entrypoint ls backup /backups
+docker compose exec backup ls /backups
 
 # Restore a specific backup
-docker compose run --rm --profile backup --entrypoint sh backup -c \
-  "pg_restore -h postgres -U observa -d inaturalist --clean /backups/observa_20260315_030000.dump"
+docker compose exec backup \
+  pg_restore -h postgres -U observa -d inaturalist --clean /backups/observa_20260315_030000.dump
 ```
 
 ## Data Export
@@ -246,6 +279,7 @@ The following alerts are pre-configured:
 - **Import is stale** — warns if no successful import in 36+ hours
 - **Last import failed** — critical alert on import failure
 - **Observation count drop** — warns if count drops >10% between imports
+- **Import hung** — critical alert if an import has been running for 4+ hours
 
 Configure notification channels in Grafana under Alerting > Contact Points.
 
@@ -345,6 +379,18 @@ docker compose logs                     # all services
 | [Data Model Reference](docs/data-model.md) | Tables, columns, relationships, indexes, and materialized views |
 | [Custom Dashboards](docs/custom-dashboards.md) | Building your own Grafana dashboards with query examples |
 | [Troubleshooting](docs/troubleshooting.md) | Common problems, error messages, and fixes |
+
+## Architecture
+
+Key design decisions and the reasoning behind them:
+
+**Atomic swap-table imports.** Each import loads data into staging tables, then renames them into place in a single transaction. This avoids the read-blocking and WAL amplification of `TRUNCATE`/`INSERT` or row-by-row `UPSERT` on a 200M+ row table. Dashboards and API queries experience zero downtime during imports.
+
+**Materialized views rebuilt per import.** The iNaturalist open dataset is published as a full snapshot, not a delta. Since every row is replaced on each import, incremental view maintenance would add complexity without benefit. Views are built under temporary names and swapped in atomically so dashboards continue serving stale-but-valid data during the rebuild.
+
+**File-lock concurrency control.** The importer uses an atomic `mkdir`-based lock with PID-based stale detection. If a previous import was killed (OOM, node restart), the next run detects the dead PID and recovers the lock automatically. This prevents concurrent imports from corrupting the table swap without requiring external coordination.
+
+**Read-only API role separation.** PostgREST connects through an `api_readonly` role that has only `SELECT` and `EXECUTE` grants. Even if PostgREST is exposed beyond localhost, the database enforces that no data can be modified through the API layer.
 
 ## Data Source
 
