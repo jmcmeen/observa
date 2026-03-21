@@ -14,7 +14,7 @@
       "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
-          "rawSql": "SELECT count(*) AS \"Observations\" FROM observations WHERE ('${quality_grade}' = '$__all' OR quality_grade IN (${quality_grade:sqlstring}));",
+          "rawSql": "SELECT count(*) AS \"Observations\" FROM observations;",
           "format": "table",
           "refId": "A"
         }
@@ -141,7 +141,7 @@
       "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
-          "rawSql": "SELECT name AS taxon, observation_count AS observations FROM mv_top_taxa WHERE ('${taxonomic_rank}' = '$__all' OR rank = '${taxonomic_rank}') ORDER BY observation_count DESC LIMIT 20;",
+          "rawSql": "SELECT name AS taxon, observation_count AS observations FROM mv_top_taxa ORDER BY observation_count DESC LIMIT 20;",
           "format": "table",
           "refId": "A"
         }
@@ -232,13 +232,12 @@
         "basemap": { "type": "default", "name": "OpenStreetMap" },
         "layers": [
           {
-            "type": "heatmap",
+            "type": "markers",
             "name": "Observations",
             "config": {
-              "weight": { "field": "metric", "fixed": 1 },
-              "radius": { "fixed": 20 },
-              "blur": { "fixed": 15 },
-              "opacity": 0.6
+              "size": { "field": "metric", "min": 5, "max": 40 },
+              "color": { "field": "metric", "fixed": "dark-orange" },
+              "fillOpacity": 0.6
             },
             "location": { "mode": "coords", "latitude": "latitude", "longitude": "longitude" }
           }
@@ -351,32 +350,7 @@
   ],
   "schemaVersion": 39,
   "tags": ["inaturalist", "observa"],
-  "templating": {
-    "list": [
-      {
-        "name": "quality_grade",
-        "label": "Quality Grade",
-        "type": "query",
-        "datasource": { "type": "postgres", "uid": "inaturalist" },
-        "query": "SELECT DISTINCT quality_grade FROM observations WHERE quality_grade IS NOT NULL ORDER BY quality_grade;",
-        "multi": true,
-        "includeAll": true,
-        "current": { "text": "All", "value": "$__all" },
-        "refresh": 1
-      },
-      {
-        "name": "taxonomic_rank",
-        "label": "Taxonomic Rank",
-        "type": "query",
-        "datasource": { "type": "postgres", "uid": "inaturalist" },
-        "query": "SELECT DISTINCT rank FROM taxa WHERE rank IS NOT NULL ORDER BY rank_level;",
-        "multi": false,
-        "includeAll": true,
-        "current": { "text": "All", "value": "$__all" },
-        "refresh": 1
-      }
-    ]
-  },
+  "templating": { "list": [] },
   "time": { "from": "now-5y", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
