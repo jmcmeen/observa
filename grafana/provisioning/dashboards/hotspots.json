@@ -88,13 +88,12 @@
         "basemap": { "type": "default", "name": "OpenStreetMap" },
         "layers": [
           {
-            "type": "heatmap",
+            "type": "markers",
             "name": "Observation Density",
             "config": {
-              "weight": { "field": "metric", "fixed": 1 },
-              "radius": { "fixed": 20 },
-              "blur": { "fixed": 15 },
-              "opacity": 0.6
+              "size": { "field": "metric", "min": 5, "max": 40 },
+              "color": { "field": "metric", "fixed": "dark-orange" },
+              "fillOpacity": 0.6
             },
             "location": { "mode": "coords", "latitude": "latitude", "longitude": "longitude" }
           }
