@@ -98,7 +98,7 @@
       "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
-          "rawSql": "WITH first_obs AS (SELECT observer_id, date_trunc('month', min(observed_on)) AS first_month FROM observations WHERE observed_on IS NOT NULL GROUP BY observer_id) SELECT first_month AS time, count(*) AS new_observers, sum(count(*)) OVER (ORDER BY first_month) AS cumulative_observers FROM first_obs WHERE first_month IS NOT NULL AND $__timeFilter(first_month) GROUP BY first_month ORDER BY first_month;",
+          "rawSql": "WITH first_obs AS (SELECT observer_id, date_trunc('month', min(observed_on)) AS first_month FROM observations WHERE observed_on IS NOT NULL AND (${observer_id} = 0 OR observer_id = ${observer_id}) GROUP BY observer_id) SELECT first_month AS time, count(*) AS new_observers, sum(count(*)) OVER (ORDER BY first_month) AS cumulative_observers FROM first_obs WHERE first_month IS NOT NULL AND $__timeFilter(first_month) GROUP BY first_month ORDER BY first_month;",
           "format": "time_series",
           "refId": "A"
         }
@@ -152,7 +152,7 @@
       "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
-          "rawSql": "SELECT ob.login, ob.name, count(*) AS observations, count(DISTINCT o.taxon_id) AS species, count(DISTINCT p.photo_id) AS photos, min(o.observed_on) AS first_observation, max(o.observed_on) AS latest_observation FROM observations o JOIN observers ob ON o.observer_id = ob.observer_id LEFT JOIN photos p ON o.observation_uuid = p.observation_uuid GROUP BY ob.login, ob.name ORDER BY observations DESC LIMIT 50;",
+          "rawSql": "SELECT ob.login, ob.name, count(*) AS observations, count(DISTINCT o.taxon_id) AS species, count(DISTINCT p.photo_id) AS photos, min(o.observed_on) AS first_observation, max(o.observed_on) AS latest_observation FROM observations o JOIN observers ob ON o.observer_id = ob.observer_id LEFT JOIN photos p ON o.observation_uuid = p.observation_uuid WHERE (${observer_id} = 0 OR ob.observer_id = ${observer_id}) GROUP BY ob.login, ob.name ORDER BY observations DESC LIMIT 50;",
           "format": "table",
           "refId": "A"
         }
@@ -168,7 +168,7 @@
       "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
-          "rawSql": "SELECT COALESCE(ob.login, 'observer_' || ob.observer_id) AS observer, count(DISTINCT o.taxon_id) AS species FROM observations o JOIN observers ob ON o.observer_id = ob.observer_id GROUP BY ob.login, ob.observer_id ORDER BY species DESC LIMIT 20;",
+          "rawSql": "SELECT COALESCE(ob.login, 'observer_' || ob.observer_id) AS observer, count(DISTINCT o.taxon_id) AS species FROM observations o JOIN observers ob ON o.observer_id = ob.observer_id WHERE (${observer_id} = 0 OR ob.observer_id = ${observer_id}) GROUP BY ob.login, ob.observer_id ORDER BY species DESC LIMIT 20;",
           "format": "table",
           "refId": "A"
         }
@@ -184,7 +184,7 @@
       "datasource": { "type": "postgres", "uid": "inaturalist" },
       "targets": [
         {
-          "rawSql": "SELECT date_trunc('month', observed_on) AS time, count(DISTINCT observer_id) AS active_observers FROM observations WHERE observed_on IS NOT NULL AND $__timeFilter(observed_on) GROUP BY 1 ORDER BY 1;",
+          "rawSql": "SELECT date_trunc('month', observed_on) AS time, count(DISTINCT observer_id) AS active_observers FROM observations WHERE observed_on IS NOT NULL AND (${observer_id} = 0 OR observer_id = ${observer_id}) AND $__timeFilter(observed_on) GROUP BY 1 ORDER BY 1;",
           "format": "time_series",
           "refId": "A"
         }
@@ -201,7 +201,18 @@
   ],
   "schemaVersion": 39,
   "tags": ["inaturalist", "observa", "observers"],
-  "templating": { "list": [] },
+  "templating": {
+    "list": [
+      {
+        "name": "observer_id",
+        "label": "Observer ID",
+        "description": "Filter to a specific iNaturalist observer ID. Set to 0 for all observers.",
+        "type": "textbox",
+        "query": "0",
+        "current": { "text": "0", "value": "0" }
+      }
+    ]
+  },
   "time": { "from": "now-5y", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
