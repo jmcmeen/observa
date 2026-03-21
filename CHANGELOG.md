@@ -33,6 +33,14 @@ All notable changes to this project will be documented in this file.
 
 - **Architecture Decisions section** — Added an Architecture section to the README explaining the swap-table import pattern, materialized view rebuild strategy, file-lock concurrency control, and read-only API role separation.
 - Updated Grafana Alerts section to include the hung-import alert.
+- Updated dashboard list in Quick Start (4 → 9 dashboards).
+- Added spatial query, taxa search, and taxonomy tree API documentation to README.
+- Updated backup, services table, and API security sections for nginx and scheduled backups.
+
+### Deferred
+
+- **FEAT-07: Incremental materialized view refresh** — deferred until refresh times become a bottleneck at 500M+ rows.
+- **FEAT-18: Endangered species monitoring** — deferred; requires sourcing external IUCN Red List data.
 
 ## v0.1.4 — 2026-03-19
 
