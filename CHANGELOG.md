@@ -36,6 +36,7 @@ All notable changes to this project will be documented in this file.
 - Updated dashboard list in Quick Start (4 → 9 dashboards).
 - Added spatial query, taxa search, and taxonomy tree API documentation to README.
 - Updated backup, services table, and API security sections for nginx and scheduled backups.
+- Replaced manual seed snippet with `test-local.sh` one-command test harness (100K synthetic observations, API smoke tests).
 
 ### Deferred
 
