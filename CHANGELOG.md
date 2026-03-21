@@ -19,6 +19,15 @@ All notable changes to this project will be documented in this file.
 ### Features
 
 - **Spatial query API endpoint** — Added `observations_near(lat, lon, radius_km, lim)` PostgreSQL function for finding observations within a radius of a geographic point. Auto-exposed via PostgREST at `/rpc/observations_near`. Returns results ordered by distance with `distance_m` in meters.
+- **Fuzzy taxa search endpoint** — Added `taxa_search(query, lim)` function using `pg_trgm` similarity and `ILIKE` for typo-tolerant species name search. Exposed at `/rpc/taxa_search`.
+- **Automated scheduled backups** — Backup service now runs on a cron schedule (default: weekly Sunday 2 AM) instead of on-demand only. Configurable via `BACKUP_CRON` env var.
+- **Configurable import thresholds** — The row count drop threshold (previously hardcoded at 50%) is now configurable via `ROW_DROP_THRESHOLD` env var.
+- **Post-import data profiling** — Each import now computes and stores data quality metrics (NULL percentages, date range, quality grade distribution, geographic bounding box) in a new `import_stats` table.
+- **Data quality alerts** — Three new Grafana alerts: high NULL taxon_id percentage (>15%), stale observations (latest >90 days old), and geographic bounding box collapse (all observations in <1 degree).
+- **KML and Darwin Core Archive export** — `export.sh` now supports `kml` format for Google Earth and `dwca` format for GBIF-compatible Darwin Core Archives with proper `meta.xml` descriptor.
+- **Taxonomy tree navigation** — Added `taxon_lineage(taxon_id)` to walk ancestry from any taxon up to its root, and `taxon_children(parent_id)` to list direct children with observation counts. Both exposed via PostgREST RPC.
+- **Database Health dashboard** — New Grafana dashboard showing cache hit ratio, index hit ratio, database size, active queries, table sizes, index usage, table bloat, slowest queries (via `pg_stat_statements`), connection count, and temp file usage.
+- **API rate limiting and request logging** — Nginx reverse proxy in front of PostgREST with rate limiting (10 req/s per IP, burst 20), access logging, and CORS headers. PostgREST is no longer directly exposed; all API traffic routes through nginx on port 3001.
 
 ### Documentation
 

@@ -296,6 +296,32 @@ psql -v ON_ERROR_STOP=1 -c "
     WHERE id = ${IMPORT_ID};
 "
 
+# Post-import data profiling
+log "Computing data profile..."
+psql -v ON_ERROR_STOP=1 -c "
+    INSERT INTO import_stats (
+        import_id, null_taxon_pct, null_location_pct, null_observed_on_pct,
+        min_observed_on, max_observed_on,
+        quality_research, quality_needs_id, quality_casual,
+        bbox_min_lat, bbox_max_lat, bbox_min_lon, bbox_max_lon
+    )
+    SELECT
+        ${IMPORT_ID},
+        round(100.0 * count(*) FILTER (WHERE taxon_id IS NULL) / NULLIF(count(*), 0), 2),
+        round(100.0 * count(*) FILTER (WHERE latitude IS NULL OR longitude IS NULL) / NULLIF(count(*), 0), 2),
+        round(100.0 * count(*) FILTER (WHERE observed_on IS NULL) / NULLIF(count(*), 0), 2),
+        min(observed_on),
+        max(observed_on),
+        count(*) FILTER (WHERE quality_grade = 'research'),
+        count(*) FILTER (WHERE quality_grade = 'needs_id'),
+        count(*) FILTER (WHERE quality_grade = 'casual'),
+        min(latitude),
+        max(latitude),
+        min(longitude),
+        max(longitude)
+    FROM observations;
+"
+
 rm -f "${DATA_DIR}"/*.csv
 
 log "=== Import completed in ${DURATION}s ==="

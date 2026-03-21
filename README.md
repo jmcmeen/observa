@@ -92,7 +92,8 @@ See comments in `db/postgresql.conf` for details on worst-case memory usage unde
 | `postgres` | 5432 | PostGIS 16 database with iNaturalist data |
 | `grafana` | 3000 | Dashboard UI with alerting |
 | `importer` | — | Cron-based ETL container (no exposed ports) |
-| `postgrest` | 3001 | Read-only REST API over the database |
+| `nginx` | 3001 | Reverse proxy with rate limiting and access logging |
+| `postgrest` | — | Read-only REST API over the database (internal, behind nginx) |
 | `backup` | — | Scheduled database backup (weekly by default) |
 
 ## Daily Imports
@@ -183,6 +184,20 @@ curl "http://localhost:3001/rpc/taxa_search?query=turdus%20migratorus&lim=5"
 
 Returns `taxon_id`, `name`, `rank`, `rank_level`, `active`, and `similarity` score, ordered by best match.
 
+### Taxonomy tree
+
+Navigate the taxonomic hierarchy using recursive ancestry queries:
+
+```bash
+# Get the full lineage of a taxon (e.g., American Robin, taxon_id=12727)
+curl "http://localhost:3001/rpc/taxon_lineage?target_taxon_id=12727"
+
+# List direct children of a taxon with observation counts
+curl "http://localhost:3001/rpc/taxon_children?parent_id=3&lim=20"
+```
+
+`taxon_lineage` walks from any taxon up to its kingdom, returning each ancestor's name, rank, and depth. `taxon_children` lists direct children sorted by observation count.
+
 See the [PostgREST documentation](https://postgrest.org/en/stable/references/api.html) for full query syntax.
 
 ### CSV export
@@ -198,7 +213,9 @@ See **[docs/csv-export-guide.md](docs/csv-export-guide.md)** for filtering, colu
 
 ### API security notice
 
-The PostgREST API is **unauthenticated by default** — anyone with network access to port 3001 can query the full dataset. This is acceptable on trusted networks or when bound to localhost (the default), but you should add authentication before exposing it to the internet.
+The API is rate-limited (10 requests/second per IP, burst of 20) via an nginx reverse proxy. The `/v_health` endpoint is exempt from rate limiting for uptime monitors. PostgREST is not directly exposed — all traffic routes through nginx.
+
+The API is **unauthenticated by default** — anyone with network access to port 3001 can query the full dataset. This is acceptable on trusted networks or when bound to localhost (the default), but you should add authentication before exposing it to the internet.
 
 To enable JWT authentication:
 

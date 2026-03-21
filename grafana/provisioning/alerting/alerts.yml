@@ -156,3 +156,113 @@ groups:
           severity: critical
         annotations:
           summary: "An import has been in 'running' state for more than 4 hours"
+
+  - orgId: 1
+    name: Data Quality
+    folder: Observa Alerts
+    interval: 10m
+    rules:
+      - uid: quality-null-taxon
+        title: High NULL taxon_id percentage
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: inaturalist
+            model:
+              rawSql: "SELECT null_taxon_pct FROM import_stats ORDER BY id DESC LIMIT 1;"
+              format: table
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              type: threshold
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [15]
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+        for: 0s
+        labels:
+          severity: warning
+        annotations:
+          summary: "More than 15% of observations have NULL taxon_id — possible upstream data issue"
+
+      - uid: quality-stale-observations
+        title: Latest observation is stale (>90 days old)
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: inaturalist
+            model:
+              rawSql: "SELECT EXTRACT(EPOCH FROM now() - max_observed_on::timestamptz) / 86400 AS days_stale FROM import_stats ORDER BY id DESC LIMIT 1;"
+              format: table
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              type: threshold
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [90]
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+        for: 0s
+        labels:
+          severity: warning
+        annotations:
+          summary: "The most recent observation date is over 90 days ago — upstream data may be stale"
+
+      - uid: quality-geo-collapse
+        title: Geographic bounding box collapsed
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: inaturalist
+            model:
+              rawSql: "SELECT CASE WHEN (bbox_max_lat - bbox_min_lat) < 1 AND (bbox_max_lon - bbox_min_lon) < 1 THEN 1 ELSE 0 END AS collapsed FROM import_stats ORDER BY id DESC LIMIT 1;"
+              format: table
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "-100"
+            model:
+              type: threshold
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+        for: 0s
+        labels:
+          severity: critical
+        annotations:
+          summary: "All observations are clustered within a 1-degree bounding box — possible data corruption"

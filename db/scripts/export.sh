@@ -1,13 +1,15 @@
 #!/bin/sh
 set -e
 
-# Export data from the database in CSV or GeoJSON format
-# Usage: export.sh [csv|geojson] [table] [output_dir]
+# Export data from the database in CSV, GeoJSON, KML, or Darwin Core Archive format
+# Usage: export.sh [csv|geojson|kml|dwca] [table] [output_dir]
 #
 # Examples:
 #   export.sh csv observations /data
 #   export.sh csv taxa /data
 #   export.sh geojson observations /data
+#   export.sh kml observations /data
+#   export.sh dwca observations /data
 
 FORMAT="${1:-csv}"
 TABLE="${2:-observations}"
@@ -59,8 +61,93 @@ case "$FORMAT" in
         " > "$OUTPUT_FILE"
         log "Exported to ${OUTPUT_FILE} (limited to 10,000 features)"
         ;;
+    kml)
+        if [ "$TABLE" != "observations" ]; then
+            echo "ERROR: KML export only supported for observations table"
+            exit 1
+        fi
+        OUTPUT_FILE="${OUTPUT_DIR}/observations_export.kml"
+        log "Exporting observations to KML (Google Earth)..."
+        psql -qtAX -c "
+            SELECT '<?xml version=\"1.0\" encoding=\"UTF-8\"?>'
+            || '<kml xmlns=\"http://www.opengis.net/kml/2.2\">'
+            || '<Document><name>Observa Export</name>'
+            || COALESCE(string_agg(
+                '<Placemark>'
+                || '<name>' || COALESCE(t.name, 'Unknown') || '</name>'
+                || '<description>'
+                || 'UUID: ' || o.observation_uuid
+                || ', Quality: ' || COALESCE(o.quality_grade, '')
+                || ', Date: ' || COALESCE(o.observed_on::text, '')
+                || '</description>'
+                || '<Point><coordinates>'
+                || o.longitude || ',' || o.latitude
+                || '</coordinates></Point>'
+                || '</Placemark>',
+                ''
+            ), '')
+            || '</Document></kml>'
+            FROM observations o
+            LEFT JOIN taxa t ON o.taxon_id = t.taxon_id
+            WHERE o.latitude IS NOT NULL AND o.longitude IS NOT NULL
+            LIMIT 10000;
+        " > "$OUTPUT_FILE"
+        log "Exported to ${OUTPUT_FILE} (limited to 10,000 placemarks)"
+        ;;
+    dwca)
+        if [ "$TABLE" != "observations" ]; then
+            echo "ERROR: Darwin Core Archive export only supported for observations table"
+            exit 1
+        fi
+        DWCA_DIR="${OUTPUT_DIR}/dwca_export"
+        mkdir -p "$DWCA_DIR"
+        log "Exporting observations as Darwin Core Archive..."
+
+        # Occurrence core file
+        psql -c "\COPY (
+            SELECT
+                observation_uuid AS \"occurrenceID\",
+                'HumanObservation' AS \"basisOfRecord\",
+                o.observed_on AS \"eventDate\",
+                o.latitude AS \"decimalLatitude\",
+                o.longitude AS \"decimalLongitude\",
+                o.positional_accuracy AS \"coordinateUncertaintyInMeters\",
+                t.name AS \"scientificName\",
+                t.rank AS \"taxonRank\",
+                o.quality_grade AS \"occurrenceStatus\",
+                ob.login AS \"recordedBy\"
+            FROM observations o
+            LEFT JOIN taxa t ON o.taxon_id = t.taxon_id
+            LEFT JOIN observers ob ON o.observer_id = ob.observer_id
+            LIMIT 100000
+        ) TO '${DWCA_DIR}/occurrence.csv' WITH (FORMAT csv, HEADER true)"
+
+        # Meta descriptor
+        cat > "${DWCA_DIR}/meta.xml" << 'METAXML'
+<?xml version="1.0" encoding="UTF-8"?>
+<archive xmlns="http://rs.tdwg.org/dwc/text/">
+  <core encoding="UTF-8" fieldsTerminatedBy="," linesTerminatedBy="\n" fieldsEnclosedBy="&quot;" ignoreHeaderLines="1" rowType="http://rs.tdwg.org/dwc/terms/Occurrence">
+    <files><location>occurrence.csv</location></files>
+    <id index="0"/>
+    <field index="0" term="http://rs.tdwg.org/dwc/terms/occurrenceID"/>
+    <field index="1" term="http://rs.tdwg.org/dwc/terms/basisOfRecord"/>
+    <field index="2" term="http://rs.tdwg.org/dwc/terms/eventDate"/>
+    <field index="3" term="http://rs.tdwg.org/dwc/terms/decimalLatitude"/>
+    <field index="4" term="http://rs.tdwg.org/dwc/terms/decimalLongitude"/>
+    <field index="5" term="http://rs.tdwg.org/dwc/terms/coordinateUncertaintyInMeters"/>
+    <field index="6" term="http://rs.tdwg.org/dwc/terms/scientificName"/>
+    <field index="7" term="http://rs.tdwg.org/dwc/terms/taxonRank"/>
+    <field index="8" term="http://rs.tdwg.org/dwc/terms/occurrenceStatus"/>
+    <field index="9" term="http://rs.tdwg.org/dwc/terms/recordedBy"/>
+  </core>
+</archive>
+METAXML
+
+        log "Exported to ${DWCA_DIR}/ (occurrence.csv + meta.xml, limited to 100,000 records)"
+        log "To create a .zip archive: cd ${DWCA_DIR} && zip ../dwca_export.zip *"
+        ;;
     *)
-        echo "ERROR: Unknown format '$FORMAT'. Valid formats: csv, geojson"
+        echo "ERROR: Unknown format '$FORMAT'. Valid formats: csv, geojson, kml, dwca"
         exit 1
         ;;
 esac
