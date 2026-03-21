@@ -324,37 +324,26 @@ docker compose up -d importer
 docker compose exec importer /bin/sh /import.sh
 ```
 
-### Seeding a small test dataset
+### Local testing without S3
 
-For local testing without downloading the full ~10 GB dataset, you can insert sample data directly:
+A one-command test harness seeds 100K synthetic observations, refreshes materialized views, and runs an API smoke test against all endpoints:
 
 ```bash
-docker compose exec postgres psql -U observa -d inaturalist <<'SQL'
-INSERT INTO taxa (taxon_id, name, rank, rank_level, active)
-VALUES (1, 'Aves', 'class', 50, true),
-       (2, 'Turdus migratorius', 'species', 10, true);
-
-INSERT INTO observers (observer_id, login, name)
-VALUES (1, 'testuser', 'Test User');
-
-INSERT INTO observations (observation_uuid, observer_id, latitude, longitude, taxon_id, quality_grade, observed_on)
-VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 1, 36.5, -82.5, 2, 'research', '2025-06-15');
-
-INSERT INTO photos (photo_uuid, photo_id, observation_uuid, observer_id, license)
-VALUES ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 1, 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 1, 'CC-BY');
-SQL
+docker compose up -d
+./scripts/test-local.sh
 ```
 
-Then refresh the materialized views so dashboards reflect the test data:
+This generates a realistic dataset with taxonomy hierarchy (10 orders, 9 families, 80 species), 200 observers, geographically clustered observations across 5 US regions, 60K photos, and seasonal date spread — enough to exercise all dashboards, spatial queries, taxa search, and data quality alerts.
+
+The individual scripts can also be run separately:
 
 ```bash
-docker compose exec postgres psql -U observa -d inaturalist -f /docker-entrypoint-initdb.d/../scripts/create-materialized-views.sql
-```
-
-Note: the views script is mounted at `/scripts` inside the importer container, but accessible from the postgres container only if you mount it separately. Alternatively, run it from the importer:
-
-```bash
+# Seed data only (idempotent — safe to re-run)
+docker compose exec -T postgres psql -U observa -d inaturalist -f - < scripts/seed-test-data.sql
 docker compose exec importer psql -f /scripts/create-materialized-views.sql
+
+# API smoke tests only
+./scripts/test-api.sh
 ```
 
 ### Testing alert SQL
