@@ -84,7 +84,7 @@
       ],
       "fieldConfig": { "defaults": {}, "overrides": [] },
       "options": {
-        "view": { "id": "coords", "lat": 20, "lon": 0, "zoom": 2 },
+        "view": { "id": "fit", "lat": 0, "lon": 0, "zoom": 2 },
         "basemap": { "type": "default", "name": "OpenStreetMap" },
         "layers": [
           {
@@ -148,7 +148,7 @@
       ],
       "fieldConfig": { "defaults": {}, "overrides": [] },
       "options": {
-        "view": { "id": "coords", "lat": 20, "lon": 0, "zoom": 2 },
+        "view": { "id": "fit", "lat": 0, "lon": 0, "zoom": 2 },
         "basemap": { "type": "default", "name": "OpenStreetMap" },
         "layers": [
           {
