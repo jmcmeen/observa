@@ -123,8 +123,9 @@ case "$FORMAT" in
                 o.positional_accuracy AS \"coordinateUncertaintyInMeters\",
                 t.name AS \"scientificName\",
                 t.rank AS \"taxonRank\",
-                o.quality_grade AS \"occurrenceStatus\",
-                ob.login AS \"recordedBy\"
+                'present' AS \"occurrenceStatus\",
+                ob.login AS \"recordedBy\",
+                o.quality_grade AS \"occurrenceRemarks\"
             FROM observations o
             LEFT JOIN taxa t ON o.taxon_id = t.taxon_id
             LEFT JOIN observers ob ON o.observer_id = ob.observer_id
@@ -148,6 +149,7 @@ case "$FORMAT" in
     <field index="7" term="http://rs.tdwg.org/dwc/terms/taxonRank"/>
     <field index="8" term="http://rs.tdwg.org/dwc/terms/occurrenceStatus"/>
     <field index="9" term="http://rs.tdwg.org/dwc/terms/recordedBy"/>
+    <field index="10" term="http://rs.tdwg.org/dwc/terms/occurrenceRemarks"/>
   </core>
 </archive>
 METAXML

@@ -35,20 +35,19 @@ def log(msg: str) -> None:
         print(f"[download] {msg}", flush=True)
 
 
-def get_remote_etag(key: str) -> str:
-    try:
-        resp = s3.head_object(Bucket=BUCKET, Key=key)
-        return resp["ETag"]
-    except Exception:
-        return ""
-
-
 def download_file(key: str) -> bool:
     """Download a single file. Returns True if downloaded, False if cached."""
     etag_file = CACHE_DIR / f"{key}.etag"
     cached_file = CACHE_DIR / key
 
-    remote_etag = get_remote_etag(key)
+    # Single head_object call for both ETag and ContentLength
+    try:
+        head = s3.head_object(Bucket=BUCKET, Key=key)
+        remote_etag = head["ETag"]
+        total_size = head["ContentLength"]
+    except Exception:
+        remote_etag = ""
+        total_size = 0
 
     # Check cache
     if cached_file.exists() and etag_file.exists():
@@ -56,10 +55,6 @@ def download_file(key: str) -> bool:
         if remote_etag and remote_etag == local_etag:
             log(f"  {key}: unchanged (cached)")
             return False
-
-    # Get file size for progress bar
-    head = s3.head_object(Bucket=BUCKET, Key=key)
-    total_size = head["ContentLength"]
 
     log(f"  {key}: downloading ({total_size / (1024**3):.1f} GB)...")
 

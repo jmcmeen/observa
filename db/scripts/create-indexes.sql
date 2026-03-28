@@ -6,6 +6,7 @@ DROP INDEX IF EXISTS idx_observations_observed_on;
 DROP INDEX IF EXISTS idx_observations_geom;
 DROP INDEX IF EXISTS idx_photos_observation_uuid;
 DROP INDEX IF EXISTS idx_photos_observer_id;
+DROP INDEX IF EXISTS idx_taxa_ancestry;
 
 -- Observation indexes
 CREATE INDEX idx_observations_taxon_id ON observations (taxon_id);
@@ -24,6 +25,9 @@ CREATE INDEX idx_photos_observer_id ON photos (observer_id);
 
 -- Taxa name search (trigram)
 CREATE INDEX idx_taxa_name_trgm ON taxa USING gin (name gin_trgm_ops);
+
+-- Taxa ancestry lookup (taxon_children)
+CREATE INDEX idx_taxa_ancestry ON taxa (ancestry);
 
 -- Observer login lookup
 CREATE INDEX idx_observers_login ON observers (login);
