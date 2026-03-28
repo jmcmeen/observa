@@ -24,6 +24,7 @@ groups:
             datasourceUid: "-100"
             model:
               type: threshold
+              expression: A
               conditions:
                 - evaluator:
                     type: gt
@@ -59,6 +60,7 @@ groups:
             datasourceUid: "-100"
             model:
               type: threshold
+              expression: A
               conditions:
                 - evaluator:
                     type: gt
@@ -106,6 +108,7 @@ groups:
             datasourceUid: "-100"
             model:
               type: threshold
+              expression: A
               conditions:
                 - evaluator:
                     type: gt
@@ -141,6 +144,7 @@ groups:
             datasourceUid: "-100"
             model:
               type: threshold
+              expression: A
               conditions:
                 - evaluator:
                     type: gt
@@ -181,6 +185,7 @@ groups:
             datasourceUid: "-100"
             model:
               type: threshold
+              expression: A
               conditions:
                 - evaluator:
                     type: gt
@@ -216,6 +221,7 @@ groups:
             datasourceUid: "-100"
             model:
               type: threshold
+              expression: A
               conditions:
                 - evaluator:
                     type: gt
@@ -251,6 +257,7 @@ groups:
             datasourceUid: "-100"
             model:
               type: threshold
+              expression: A
               conditions:
                 - evaluator:
                     type: gt
