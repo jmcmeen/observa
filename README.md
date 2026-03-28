@@ -1,5 +1,7 @@
 # Observa
 
+![Observa](docs/observa.webp)
+
 A Dockerized platform for hosting and exploring [iNaturalist Open Data](https://github.com/inaturalist/inaturalist-open-data) from the AWS Open Registry. Includes a PostGIS-enabled PostgreSQL database, automated daily imports, Grafana dashboards, and a REST API.
 
 ## Prerequisites
