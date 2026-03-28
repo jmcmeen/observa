@@ -78,10 +78,10 @@ case "$FORMAT" in
             || '<Document><name>Observa Export</name>'
             || COALESCE(string_agg(
                 '<Placemark>'
-                || '<name>' || COALESCE(sub.taxon_name, 'Unknown') || '</name>'
+                || '<name>' || replace(replace(replace(COALESCE(sub.taxon_name, 'Unknown'), '&', '&amp;'), '<', '&lt;'), '>', '&gt;') || '</name>'
                 || '<description>'
                 || 'UUID: ' || sub.observation_uuid
-                || ', Quality: ' || COALESCE(sub.quality_grade, '')
+                || ', Quality: ' || replace(replace(replace(COALESCE(sub.quality_grade, ''), '&', '&amp;'), '<', '&lt;'), '>', '&gt;')
                 || ', Date: ' || COALESCE(sub.observed_on::text, '')
                 || '</description>'
                 || '<Point><coordinates>'
