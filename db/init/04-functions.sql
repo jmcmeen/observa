@@ -63,8 +63,7 @@ AS $$
         t.active,
         similarity(t.name, query) AS similarity
     FROM taxa t
-    WHERE t.name ILIKE '%' || query || '%'
-       OR similarity(t.name, query) > 0.1
+    WHERE t.name % query
     ORDER BY similarity(t.name, query) DESC, t.name
     LIMIT lim;
 $$;
@@ -139,10 +138,7 @@ AS $$
         count(o.observation_uuid) AS observation_count
     FROM taxa t
     LEFT JOIN observations o ON o.taxon_id = t.taxon_id
-    WHERE split_part(
-              t.ancestry, '/',
-              array_length(string_to_array(t.ancestry, '/'), 1)
-          ) = parent_id::text
+    WHERE t.parent_id = parent_id
     GROUP BY t.taxon_id, t.name, t.rank, t.rank_level
     ORDER BY observation_count DESC
     LIMIT lim;
