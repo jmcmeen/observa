@@ -51,7 +51,12 @@ CREATE TABLE taxa (
     rank_level double precision,
     rank varchar(255),
     name varchar(255),
-    active boolean
+    active boolean,
+    parent_id integer GENERATED ALWAYS AS (
+        CASE WHEN ancestry IS NOT NULL AND ancestry != ''
+             THEN split_part(ancestry, '/', array_length(string_to_array(ancestry, '/'), 1))::integer
+        END
+    ) STORED
 );
 
 CREATE TABLE observers (
