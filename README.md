@@ -404,6 +404,35 @@ Key design decisions and the reasoning behind them:
 
 **Read-only API role separation.** PostgREST connects through an `api_readonly` role that has only `SELECT` and `EXECUTE` grants. Even if PostgREST is exposed beyond localhost, the database enforces that no data can be modified through the API layer.
 
+## Contributing
+
+Contributions are welcome. To get started:
+
+1. Fork the repository and create a feature branch from `main`.
+2. Set up the local development environment (see [Quick Start](#quick-start)).
+3. Run the test harness before submitting:
+
+   ```bash
+   ./scripts/test-local.sh
+   ```
+
+4. Open a pull request against `main` with a clear description of the change.
+
+Bug reports and feature requests can be filed via [GitHub Issues](https://github.com/jmcmeen/observa/issues).
+
+## Citation
+
+If you use Observa in academic work or publications, please cite it as:
+
+```bibtex
+@software{observa,
+  author       = {McMeen, John},
+  title        = {Observa: A Dockerized Platform for iNaturalist Open Data},
+  url          = {https://github.com/jmcmeen/observa},
+  license      = {Apache-2.0}
+}
+```
+
 ## Data Source
 
 This project uses the [iNaturalist Open Dataset](https://github.com/inaturalist/inaturalist-open-data), which is hosted on the [AWS Open Data Registry](https://registry.opendata.aws/inaturalist-open-data/). The dataset includes observations, photos, taxa, and observer metadata published under Creative Commons licenses. See the upstream repository for licensing and attribution details.
