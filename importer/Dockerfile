@@ -13,10 +13,8 @@ RUN pip install --no-cache-dir boto3 tqdm
 
 COPY download.py /download.py
 COPY import.sh /import.sh
-RUN chmod +x /import.sh
-
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /import.sh /entrypoint.sh
 
 WORKDIR /data
 
