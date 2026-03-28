@@ -55,9 +55,13 @@ case "$FORMAT" in
                     )
                 ), '[]'::json)
             )
-            FROM observations
-            WHERE geom IS NOT NULL
-            LIMIT 10000;
+            FROM (
+                SELECT geom, observation_uuid, taxon_id, quality_grade, observed_on
+                FROM observations
+                WHERE geom IS NOT NULL
+                ORDER BY observed_on DESC
+                LIMIT 10000
+            ) sub;
         " > "$OUTPUT_FILE"
         log "Exported to ${OUTPUT_FILE} (limited to 10,000 features)"
         ;;
@@ -74,23 +78,28 @@ case "$FORMAT" in
             || '<Document><name>Observa Export</name>'
             || COALESCE(string_agg(
                 '<Placemark>'
-                || '<name>' || COALESCE(t.name, 'Unknown') || '</name>'
+                || '<name>' || COALESCE(sub.taxon_name, 'Unknown') || '</name>'
                 || '<description>'
-                || 'UUID: ' || o.observation_uuid
-                || ', Quality: ' || COALESCE(o.quality_grade, '')
-                || ', Date: ' || COALESCE(o.observed_on::text, '')
+                || 'UUID: ' || sub.observation_uuid
+                || ', Quality: ' || COALESCE(sub.quality_grade, '')
+                || ', Date: ' || COALESCE(sub.observed_on::text, '')
                 || '</description>'
                 || '<Point><coordinates>'
-                || o.longitude || ',' || o.latitude
+                || sub.longitude || ',' || sub.latitude
                 || '</coordinates></Point>'
                 || '</Placemark>',
                 ''
             ), '')
             || '</Document></kml>'
-            FROM observations o
-            LEFT JOIN taxa t ON o.taxon_id = t.taxon_id
-            WHERE o.latitude IS NOT NULL AND o.longitude IS NOT NULL
-            LIMIT 10000;
+            FROM (
+                SELECT o.observation_uuid, o.quality_grade, o.observed_on,
+                       o.longitude, o.latitude, t.name AS taxon_name
+                FROM observations o
+                LEFT JOIN taxa t ON o.taxon_id = t.taxon_id
+                WHERE o.latitude IS NOT NULL AND o.longitude IS NOT NULL
+                ORDER BY o.observed_on DESC
+                LIMIT 10000
+            ) sub;
         " > "$OUTPUT_FILE"
         log "Exported to ${OUTPUT_FILE} (limited to 10,000 placemarks)"
         ;;
