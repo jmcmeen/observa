@@ -16,7 +16,7 @@ All notable changes to this project will be documented in this file.
 
 ### Performance
 
-- **Non-blocking materialized view refresh** — Replaced the DROP/CREATE pattern for materialized views with a build-and-swap approach. New views are built under temporary names while dashboards continue reading existing views, then swapped in atomically. Dashboards no longer return errors or stale during view rebuilds.
+- **Non-blocking materialized view refresh** — Replaced the DROP/CREATE pattern for materialized views with a build-and-swap approach. New views are built under temporary names while dashboards continue reading existing views, then swapped in atomically. Dashboards no longer return errors or stale data during view rebuilds.
 - **Python S3 downloader with progress bars** — Replaced the shell-based `aws s3 cp` download logic with a Python script using `boto3` and `tqdm`. Downloads show per-file progress bars with transfer speed and ETA. Removed `aws-cli` dependency from the importer image.
 
 ### Features
