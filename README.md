@@ -45,16 +45,16 @@ A Dockerized platform for hosting and exploring [iNaturalist Open Data](https://
 
 4. **Open the dashboard**
 
-   Navigate to [http://localhost:3000](http://localhost:3000) and log in with the credentials from your `.env` file. Nine dashboards are pre-provisioned:
+   Navigate to [http://localhost:3000](http://localhost:3000) and log in with the credentials from your `.env` file. Eight dashboards are pre-provisioned:
 
-   - **iNaturalist Overview** — observations, taxa, maps, and analytics (filterable by quality grade and taxonomic rank)
+   - **iNaturalist Overview** — total observations, taxa, maps, quality grade distribution, monthly trends, and top species
    - **Regional Explorer** — parameterized dashboard for any region and taxon (set bounding box, taxon ID, and quality grade via dropdowns)
    - **Import Health** — import duration trends, row counts, and status history
    - **iNaturalist HotSpots** — global observation density heatmap with multi-resolution grid variable
    - **Anomaly Detection** — anomaly score distribution, trends, geographic map, and top anomalous species
-   - **Observer Activity** — observer engagement, cumulative growth, activity distribution, and monthly active counts
+   - **Observer Activity** — observer engagement, cumulative growth, activity distribution, and monthly active counts (filterable by observer ID)
    - **BioBlitz Event** — time-bounded citizen science events with species accumulation and participant leaderboards
-   - **Database Health** — cache/index hit ratios, table sizes, index usage, bloat, slow queries, and active connections
+   - **Database Health** — cache hit ratio, index hit ratio, database size, table sizes, index usage, bloat, slow queries, and active connections
 
 ## Configuration
 
