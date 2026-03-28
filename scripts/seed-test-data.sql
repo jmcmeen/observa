@@ -1,8 +1,18 @@
 -- Seed a synthetic dataset for local testing.
 -- Generates ~100K observations with realistic taxonomy, geography, and dates.
--- Run via: psql -f seed-test-data.sql
+-- Run via: ./scripts/test-local.sh  (or manually with the ALLOW_SEED flag below)
 --
 -- Designed to be idempotent: TRUNCATE + re-insert on each run.
+-- Safety guard: requires ALLOW_SEED=1 psql variable to prevent accidental runs
+-- against non-throwaway databases. Pass it with: psql -v ALLOW_SEED=1 -f seed-test-data.sql
+
+\if :{?ALLOW_SEED}
+\else
+    \warn 'ERROR: Safety guard — refusing to seed without ALLOW_SEED variable.'
+    \warn 'Run via: psql -v ALLOW_SEED=1 -f seed-test-data.sql'
+    \warn '  or use: ./scripts/test-local.sh'
+    \quit
+\endif
 
 BEGIN;
 

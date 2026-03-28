@@ -19,7 +19,7 @@ if ! docker compose ps --status running postgres 2>/dev/null | grep -q postgres;
 fi
 
 log "Seeding test data (100K observations)..."
-docker compose exec -T postgres psql -U observa -d inaturalist -f - < "${PROJECT_DIR}/scripts/seed-test-data.sql"
+docker compose exec -T postgres psql -U observa -d inaturalist -v ALLOW_SEED=1 -f - < "${PROJECT_DIR}/scripts/seed-test-data.sql"
 
 log "Refreshing materialized views..."
 docker compose exec -T importer psql -f /scripts/create-materialized-views.sql
