@@ -2,46 +2,56 @@
 
 All notable changes to this project will be documented in this file.
 
-## v0.2.0 — 2026-03-20
+## v0.2.0 — 2026-03-28
 
 ### Security
 
 - **Default credential check expanded** — The importer now refuses to start if `GF_SECURITY_ADMIN_PASSWORD` is still set to `changeme`, in addition to the existing `PGPASSWORD` check. Added a security callout to the Quick Start section of the README.
+- **API rate limiting and request logging** — Nginx reverse proxy in front of PostgREST with rate limiting (10 req/s per IP, burst 20), access logging, and CORS headers. PostgREST is no longer directly exposed; all API traffic routes through nginx on port 3001.
 
 ### Reliability
 
 - **Index on import_log.started_at** — Added a descending index on `started_at` to support the hung-import alert query efficiently as import history grows.
+- **Data quality alerts** — Three new Grafana alerts: high NULL taxon_id percentage (>15%), stale observations (latest >90 days old), and geographic bounding box collapse (all observations in <1 degree).
 
 ### Performance
 
 - **Non-blocking materialized view refresh** — Replaced the DROP/CREATE pattern for materialized views with a build-and-swap approach. New views are built under temporary names while dashboards continue reading existing views, then swapped in atomically. Dashboards no longer return errors or stale during view rebuilds.
+- **Python S3 downloader with progress bars** — Replaced the shell-based `aws s3 cp` download logic with a Python script using `boto3` and `tqdm`. Downloads show per-file progress bars with transfer speed and ETA. Removed `aws-cli` dependency from the importer image.
 
 ### Features
 
 - **Spatial query API endpoint** — Added `observations_near(lat, lon, radius_km, lim)` PostgreSQL function for finding observations within a radius of a geographic point. Auto-exposed via PostgREST at `/rpc/observations_near`. Returns results ordered by distance with `distance_m` in meters.
 - **Fuzzy taxa search endpoint** — Added `taxa_search(query, lim)` function using `pg_trgm` similarity and `ILIKE` for typo-tolerant species name search. Exposed at `/rpc/taxa_search`.
+- **Taxonomy tree navigation** — Added `taxon_lineage(taxon_id)` to walk ancestry from any taxon up to its root, and `taxon_children(parent_id)` to list direct children with observation counts. Both exposed via PostgREST RPC.
 - **Automated scheduled backups** — Backup service now runs on a cron schedule (default: weekly Sunday 2 AM) instead of on-demand only. Configurable via `BACKUP_CRON` env var.
 - **Configurable import thresholds** — The row count drop threshold (previously hardcoded at 50%) is now configurable via `ROW_DROP_THRESHOLD` env var.
 - **Post-import data profiling** — Each import now computes and stores data quality metrics (NULL percentages, date range, quality grade distribution, geographic bounding box) in a new `import_stats` table.
-- **Data quality alerts** — Three new Grafana alerts: high NULL taxon_id percentage (>15%), stale observations (latest >90 days old), and geographic bounding box collapse (all observations in <1 degree).
 - **KML and Darwin Core Archive export** — `export.sh` now supports `kml` format for Google Earth and `dwca` format for GBIF-compatible Darwin Core Archives with proper `meta.xml` descriptor.
-- **Taxonomy tree navigation** — Added `taxon_lineage(taxon_id)` to walk ancestry from any taxon up to its root, and `taxon_children(parent_id)` to list direct children with observation counts. Both exposed via PostgREST RPC.
 - **Database Health dashboard** — New Grafana dashboard showing cache hit ratio, index hit ratio, database size, active queries, table sizes, index usage, table bloat, slowest queries (via `pg_stat_statements`), connection count, and temp file usage.
-- **API rate limiting and request logging** — Nginx reverse proxy in front of PostgREST with rate limiting (10 req/s per IP, burst 20), access logging, and CORS headers. PostgREST is no longer directly exposed; all API traffic routes through nginx on port 3001.
+- **Observer Activity filtering** — Observer Activity dashboard now accepts an iNaturalist observer ID to filter all panels to a single user.
+
+### Dashboard hardening
+
+- Removed unused `quality_grade` and `taxonomic_rank` variable dropdowns from Overview dashboard (were defined but not wired to queries).
+- Removed Photo Gallery dashboard (photo metadata is better explored via the API).
+- Lowered default anomaly threshold from 0.9 to 0.5 for better out-of-the-box visibility.
+- Fixed Overview heatmap and HotSpots density panels to render correctly with marker layers.
+- All geomap panels use auto-fit view to zoom to data extent instead of centering on the Atlantic.
 
 ### Documentation
 
 - **Architecture Decisions section** — Added an Architecture section to the README explaining the swap-table import pattern, materialized view rebuild strategy, file-lock concurrency control, and read-only API role separation.
 - Updated Grafana Alerts section to include the hung-import alert.
-- Updated dashboard list in Quick Start (4 → 9 dashboards).
+- Updated dashboard list in Quick Start (4 → 8 dashboards).
 - Added spatial query, taxa search, and taxonomy tree API documentation to README.
 - Updated backup, services table, and API security sections for nginx and scheduled backups.
 - Replaced manual seed snippet with `test-local.sh` one-command test harness (100K synthetic observations, API smoke tests).
 
 ### Deferred
 
-- **FEAT-07: Incremental materialized view refresh** — deferred until refresh times become a bottleneck at 500M+ rows.
-- **FEAT-18: Endangered species monitoring** — deferred; requires sourcing external IUCN Red List data.
+- **Incremental materialized view refresh** — deferred until refresh times become a bottleneck at 500M+ rows.
+- **Endangered species monitoring** — deferred; requires sourcing external IUCN Red List data.
 
 ## v0.1.4 — 2026-03-19
 
