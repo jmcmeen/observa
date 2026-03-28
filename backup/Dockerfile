@@ -4,6 +4,7 @@ FROM alpine:3.20
 RUN apk add --no-cache postgresql16-client
 
 COPY backup.sh /backup.sh
-RUN chmod +x /backup.sh
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /backup.sh /entrypoint.sh
 
-ENTRYPOINT ["/backup.sh"]
+ENTRYPOINT ["/entrypoint.sh"]

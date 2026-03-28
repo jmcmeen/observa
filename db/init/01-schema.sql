@@ -1,5 +1,6 @@
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 
 -- Import log for tracking ETL runs
 CREATE TABLE import_log (
@@ -50,7 +51,12 @@ CREATE TABLE taxa (
     rank_level double precision,
     rank varchar(255),
     name varchar(255),
-    active boolean
+    active boolean,
+    parent_id integer GENERATED ALWAYS AS (
+        CASE WHEN ancestry IS NOT NULL AND ancestry != ''
+             THEN split_part(ancestry, '/', array_length(string_to_array(ancestry, '/'), 1))::integer
+        END
+    ) STORED
 );
 
 CREATE TABLE observers (
@@ -60,6 +66,26 @@ CREATE TABLE observers (
 );
 
 CREATE INDEX idx_import_log_status_id ON import_log (status, id DESC);
+CREATE INDEX idx_import_log_started_at ON import_log (started_at DESC);
+
+-- Post-import data profiling stats
+CREATE TABLE import_stats (
+    id serial PRIMARY KEY,
+    import_id integer NOT NULL REFERENCES import_log(id),
+    null_taxon_pct numeric(5,2),
+    null_location_pct numeric(5,2),
+    null_observed_on_pct numeric(5,2),
+    min_observed_on date,
+    max_observed_on date,
+    quality_research bigint,
+    quality_needs_id bigint,
+    quality_casual bigint,
+    bbox_min_lat numeric(15,10),
+    bbox_max_lat numeric(15,10),
+    bbox_min_lon numeric(15,10),
+    bbox_max_lon numeric(15,10),
+    created_at timestamptz NOT NULL DEFAULT now()
+);
 
 -- Allow the main user to query database size in Grafana
 GRANT pg_read_all_stats TO CURRENT_USER;

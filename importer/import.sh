@@ -1,8 +1,6 @@
 #!/bin/sh
 set -e
 
-S3_BUCKET="s3://inaturalist-open-data"
-AWS_ARGS="--no-sign-request --region us-east-1 --cli-read-timeout 300"
 DATA_DIR="/data"
 CACHE_DIR="/cache"
 SCRIPTS_DIR="/scripts"
@@ -55,41 +53,17 @@ wait_for_postgres() {
     done
 }
 
-download_one() {
-    file="$1"
-    ETAG_FILE="${CACHE_DIR}/${file}.etag"
-    CACHED_FILE="${CACHE_DIR}/${file}"
-
-    # Get the current ETag from S3
-    REMOTE_ETAG=$(aws s3api head-object ${AWS_ARGS} \
-        --bucket inaturalist-open-data --key "${file}" \
-        --query ETag --output text 2>/dev/null || echo "")
-
-    # Compare with cached ETag
-    if [ -f "$CACHED_FILE" ] && [ -f "$ETAG_FILE" ]; then
-        LOCAL_ETAG=$(cat "$ETAG_FILE")
-        if [ "$REMOTE_ETAG" = "$LOCAL_ETAG" ]; then
-            log "  ${file}: unchanged (cached)"
-            return
-        fi
-    fi
-
-    log "  ${file}: downloading..."
-    aws s3 cp --no-progress ${AWS_ARGS} "${S3_BUCKET}/${file}" "${CACHED_FILE}"
-    log "  ${file}: done"
-    echo "$REMOTE_ETAG" > "$ETAG_FILE"
-    touch "${CACHE_DIR}/.files_changed"
-}
-
 download_files() {
     mkdir -p "${CACHE_DIR}"
     rm -f "${CACHE_DIR}/.files_changed"
-    log "Checking for updated data files on S3..."
 
-    for file in observations.csv.gz observers.csv.gz photos.csv.gz taxa.csv.gz; do
-        download_one "$file" &
-    done
-    wait
+    CACHE_DIR="${CACHE_DIR}" python3 /download.py
+    DOWNLOAD_STATUS=$?
+
+    if [ "$DOWNLOAD_STATUS" -ne 0 ]; then
+        log "ERROR: Download failed"
+        exit 1
+    fi
 
     if [ -f "${CACHE_DIR}/.files_changed" ]; then
         FILES_CHANGED=1
@@ -127,15 +101,16 @@ validate_files() {
         esac
     done
 
-    # Check row counts against previous import (abort if < 50% of previous)
+    # Check row counts against previous import (abort if drop exceeds threshold)
+    ROW_DROP_THRESHOLD=${ROW_DROP_THRESHOLD:-50}
     PREV_OBS_COUNT=$(psql -qtAX -c "SELECT COALESCE(observations_count, 0) FROM import_log WHERE status = 'completed' ORDER BY id DESC LIMIT 1;" 2>/dev/null || echo "0")
     if [ "$PREV_OBS_COUNT" -gt 0 ] 2>/dev/null; then
         # awk END{NR} counts records correctly even without a trailing newline
         NEW_OBS_LINES=$(awk 'END{print NR}' "${DATA_DIR}/observations.csv")
         NEW_OBS_LINES=$((NEW_OBS_LINES - 1))  # subtract header
-        THRESHOLD=$((PREV_OBS_COUNT / 2))
+        THRESHOLD=$((PREV_OBS_COUNT * (100 - ROW_DROP_THRESHOLD) / 100))
         if [ "$NEW_OBS_LINES" -lt "$THRESHOLD" ]; then
-            log "ERROR: observations.csv has ${NEW_OBS_LINES} rows, less than 50% of previous import (${PREV_OBS_COUNT}). Aborting."
+            log "ERROR: observations.csv has ${NEW_OBS_LINES} rows, more than ${ROW_DROP_THRESHOLD}% drop from previous import (${PREV_OBS_COUNT}). Aborting."
             exit 1
         fi
     fi
@@ -209,7 +184,7 @@ SQL
 
     log "Dropping old tables..."
     psql -v ON_ERROR_STOP=1 <<SQL
-DROP TABLE IF EXISTS observations_old, photos_old, taxa_old, observers_old CASCADE;
+DROP TABLE IF EXISTS observations_old, photos_old, taxa_old, observers_old;
 SQL
 }
 
@@ -293,6 +268,32 @@ psql -v ON_ERROR_STOP=1 -c "
         observers_count = ${OBSERVER_COUNT},
         duration_seconds = ${DURATION}
     WHERE id = ${IMPORT_ID};
+"
+
+# Post-import data profiling
+log "Computing data profile..."
+psql -v ON_ERROR_STOP=1 -c "
+    INSERT INTO import_stats (
+        import_id, null_taxon_pct, null_location_pct, null_observed_on_pct,
+        min_observed_on, max_observed_on,
+        quality_research, quality_needs_id, quality_casual,
+        bbox_min_lat, bbox_max_lat, bbox_min_lon, bbox_max_lon
+    )
+    SELECT
+        ${IMPORT_ID},
+        round(100.0 * count(*) FILTER (WHERE taxon_id IS NULL) / NULLIF(count(*), 0), 2),
+        round(100.0 * count(*) FILTER (WHERE latitude IS NULL OR longitude IS NULL) / NULLIF(count(*), 0), 2),
+        round(100.0 * count(*) FILTER (WHERE observed_on IS NULL) / NULLIF(count(*), 0), 2),
+        min(observed_on),
+        max(observed_on),
+        count(*) FILTER (WHERE quality_grade = 'research'),
+        count(*) FILTER (WHERE quality_grade = 'needs_id'),
+        count(*) FILTER (WHERE quality_grade = 'casual'),
+        min(latitude),
+        max(latitude),
+        min(longitude),
+        max(longitude)
+    FROM observations;
 "
 
 rm -f "${DATA_DIR}"/*.csv

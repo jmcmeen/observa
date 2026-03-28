@@ -19,10 +19,13 @@ A Dockerized platform for hosting and exploring [iNaturalist Open Data](https://
 
    Edit `.env` to set your passwords:
 
-   ```
+   ```ini
    POSTGRES_PASSWORD=your_secure_password
+   API_USER_PASSWORD=your_api_password
    GF_SECURITY_ADMIN_PASSWORD=your_grafana_password
    ```
+
+   > **Security:** The importer will refuse to start if any password is still set to `changeme`. Choose strong, unique passwords for each service before proceeding.
 
 2. **Start the services**
 
@@ -42,12 +45,16 @@ A Dockerized platform for hosting and exploring [iNaturalist Open Data](https://
 
 4. **Open the dashboard**
 
-   Navigate to [http://localhost:3000](http://localhost:3000) and log in with the credentials from your `.env` file (default: `admin` / `changeme`). Four dashboards are pre-provisioned:
+   Navigate to [http://localhost:3000](http://localhost:3000) and log in with the credentials from your `.env` file. Eight dashboards are pre-provisioned:
 
-   - **iNaturalist Overview** — observations, taxa, maps, and analytics (filterable by quality grade and taxonomic rank)
+   - **iNaturalist Overview** — total observations, taxa, maps, quality grade distribution, monthly trends, and top species
    - **Regional Explorer** — parameterized dashboard for any region and taxon (set bounding box, taxon ID, and quality grade via dropdowns)
    - **Import Health** — import duration trends, row counts, and status history
-   - **iNaturalist HotSpots** — global observation density heatmap, top hotspots table, and distribution breakdown
+   - **iNaturalist HotSpots** — global observation density heatmap with multi-resolution grid variable
+   - **Anomaly Detection** — anomaly score distribution, trends, geographic map, and top anomalous species
+   - **Observer Activity** — observer engagement, cumulative growth, activity distribution, and monthly active counts (filterable by observer ID)
+   - **BioBlitz Event** — time-bounded citizen science events with species accumulation and participant leaderboards
+   - **Database Health** — cache hit ratio, index hit ratio, database size, table sizes, index usage, bloat, slow queries, and active connections
 
 ## Configuration
 
@@ -62,6 +69,8 @@ All settings are in `.env` (see `.env.example` for defaults):
 | `GF_SECURITY_ADMIN_USER` | Grafana admin username | `admin` |
 | `GF_SECURITY_ADMIN_PASSWORD` | Grafana admin password | **(required)** |
 | `IMPORT_CRON` | Import schedule (cron expression) | `0 3 * * *` (daily 3 AM) |
+| `ROW_DROP_THRESHOLD` | Max allowed row count drop % before aborting import | `50` |
+| `BACKUP_CRON` | Backup schedule (cron expression) | `0 2 * * 0` (weekly Sunday 2 AM) |
 | `BACKUP_RETENTION` | Number of database backups to keep | `4` |
 
 ### PostgreSQL tuning
@@ -87,8 +96,9 @@ See comments in `db/postgresql.conf` for details on worst-case memory usage unde
 | `postgres` | 5432 | PostGIS 16 database with iNaturalist data |
 | `grafana` | 3000 | Dashboard UI with alerting |
 | `importer` | — | Cron-based ETL container (no exposed ports) |
-| `postgrest` | 3001 | Read-only REST API over the database |
-| `backup` | — | On-demand database backup (via `--profile backup`) |
+| `nginx` | 3001 | Reverse proxy with rate limiting and access logging |
+| `postgrest` | — | Read-only REST API over the database (internal, behind nginx) |
+| `backup` | — | Scheduled database backup (weekly by default) |
 
 ## Daily Imports
 
@@ -150,6 +160,48 @@ curl "http://localhost:3001/observations?quality_grade=eq.research&limit=50"
 curl "http://localhost:3001/mv_quality_grade_counts"
 ```
 
+### Spatial queries
+
+Find observations within a radius of a geographic point using the `observations_near` RPC function:
+
+```bash
+# Observations within 50 km of Great Smoky Mountains (lat 35.5, lon -83.2)
+curl "http://localhost:3001/rpc/observations_near?lat=35.5&lon=-83.2&radius_km=50"
+
+# Nearest 20 observations to a point (default radius: 10 km)
+curl "http://localhost:3001/rpc/observations_near?lat=40.7&lon=-74.0&lim=20"
+```
+
+Returns `observation_uuid`, `taxon_id`, `quality_grade`, `observed_on`, and `distance_m` (distance in meters from the query point), ordered by distance.
+
+### Taxa search
+
+Search taxa by name with fuzzy matching (typo-tolerant):
+
+```bash
+# Search for "robin" (substring + similarity match)
+curl "http://localhost:3001/rpc/taxa_search?query=robin"
+
+# Fuzzy search for a misspelled name
+curl "http://localhost:3001/rpc/taxa_search?query=turdus%20migratorus&lim=5"
+```
+
+Returns `taxon_id`, `name`, `rank`, `rank_level`, `active`, and `similarity` score, ordered by best match.
+
+### Taxonomy tree
+
+Navigate the taxonomic hierarchy using recursive ancestry queries:
+
+```bash
+# Get the full lineage of a taxon (e.g., American Robin, taxon_id=12727)
+curl "http://localhost:3001/rpc/taxon_lineage?target_taxon_id=12727"
+
+# List direct children of a taxon with observation counts
+curl "http://localhost:3001/rpc/taxon_children?parent_id=3&lim=20"
+```
+
+`taxon_lineage` walks from any taxon up to its kingdom, returning each ancestor's name, rank, and depth. `taxon_children` lists direct children sorted by observation count.
+
 See the [PostgREST documentation](https://postgrest.org/en/stable/references/api.html) for full query syntax.
 
 ### CSV export
@@ -165,7 +217,9 @@ See **[docs/csv-export-guide.md](docs/csv-export-guide.md)** for filtering, colu
 
 ### API security notice
 
-The PostgREST API is **unauthenticated by default** — anyone with network access to port 3001 can query the full dataset. This is acceptable on trusted networks or when bound to localhost (the default), but you should add authentication before exposing it to the internet.
+The API is rate-limited (10 requests/second per IP, burst of 20) via an nginx reverse proxy. The `/v_health` endpoint is exempt from rate limiting for uptime monitors. PostgREST is not directly exposed — all traffic routes through nginx.
+
+The API is **unauthenticated by default** — anyone with network access to port 3001 can query the full dataset. This is acceptable on trusted networks or when bound to localhost (the default), but you should add authentication before exposing it to the internet.
 
 To enable JWT authentication:
 
@@ -192,21 +246,21 @@ To enable JWT authentication:
 
 ## Database Backup
 
-Run a backup on demand:
+Backups run automatically on the schedule defined by `BACKUP_CRON` (default: weekly Sunday 2 AM). To trigger an immediate backup:
 
 ```bash
-docker compose run --rm --profile backup backup
+docker compose exec backup /backup.sh
 ```
 
 Backups are stored in the `backup_data` volume in PostgreSQL custom format. To restore, copy the dump from the volume and pipe it into `pg_restore`:
 
 ```bash
 # List available backups
-docker compose run --rm --profile backup --entrypoint ls backup /backups
+docker compose exec backup ls /backups
 
 # Restore a specific backup
-docker compose run --rm --profile backup --entrypoint sh backup -c \
-  "pg_restore -h postgres -U observa -d inaturalist --clean /backups/observa_20260315_030000.dump"
+docker compose exec backup \
+  pg_restore -h postgres -U observa -d inaturalist --clean /backups/observa_20260315_030000.dump
 ```
 
 ## Data Export
@@ -246,6 +300,7 @@ The following alerts are pre-configured:
 - **Import is stale** — warns if no successful import in 36+ hours
 - **Last import failed** — critical alert on import failure
 - **Observation count drop** — warns if count drops >10% between imports
+- **Import hung** — critical alert if an import has been running for 4+ hours
 
 Configure notification channels in Grafana under Alerting > Contact Points.
 
@@ -268,37 +323,26 @@ docker compose up -d importer
 docker compose exec importer /bin/sh /import.sh
 ```
 
-### Seeding a small test dataset
+### Local testing without S3
 
-For local testing without downloading the full ~10 GB dataset, you can insert sample data directly:
+A one-command test harness seeds 100K synthetic observations, refreshes materialized views, and runs an API smoke test against all endpoints:
 
 ```bash
-docker compose exec postgres psql -U observa -d inaturalist <<'SQL'
-INSERT INTO taxa (taxon_id, name, rank, rank_level, active)
-VALUES (1, 'Aves', 'class', 50, true),
-       (2, 'Turdus migratorius', 'species', 10, true);
-
-INSERT INTO observers (observer_id, login, name)
-VALUES (1, 'testuser', 'Test User');
-
-INSERT INTO observations (observation_uuid, observer_id, latitude, longitude, taxon_id, quality_grade, observed_on)
-VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 1, 36.5, -82.5, 2, 'research', '2025-06-15');
-
-INSERT INTO photos (photo_uuid, photo_id, observation_uuid, observer_id, license)
-VALUES ('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 1, 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 1, 'CC-BY');
-SQL
+docker compose up -d
+./scripts/test-local.sh
 ```
 
-Then refresh the materialized views so dashboards reflect the test data:
+This generates a realistic dataset with taxonomy hierarchy (10 orders, 9 families, 80 species), 200 observers, geographically clustered observations across 5 US regions, 60K photos, and seasonal date spread — enough to exercise all dashboards, spatial queries, taxa search, and data quality alerts.
+
+The individual scripts can also be run separately:
 
 ```bash
-docker compose exec postgres psql -U observa -d inaturalist -f /docker-entrypoint-initdb.d/../scripts/create-materialized-views.sql
-```
-
-Note: the views script is mounted at `/scripts` inside the importer container, but accessible from the postgres container only if you mount it separately. Alternatively, run it from the importer:
-
-```bash
+# Seed data only (idempotent — safe to re-run)
+docker compose exec -T postgres psql -U observa -d inaturalist -f - < scripts/seed-test-data.sql
 docker compose exec importer psql -f /scripts/create-materialized-views.sql
+
+# API smoke tests only
+./scripts/test-api.sh
 ```
 
 ### Testing alert SQL
@@ -345,6 +389,18 @@ docker compose logs                     # all services
 | [Data Model Reference](docs/data-model.md) | Tables, columns, relationships, indexes, and materialized views |
 | [Custom Dashboards](docs/custom-dashboards.md) | Building your own Grafana dashboards with query examples |
 | [Troubleshooting](docs/troubleshooting.md) | Common problems, error messages, and fixes |
+
+## Architecture
+
+Key design decisions and the reasoning behind them:
+
+**Atomic swap-table imports.** Each import loads data into staging tables, then renames them into place in a single transaction. This avoids the read-blocking and WAL amplification of `TRUNCATE`/`INSERT` or row-by-row `UPSERT` on a 200M+ row table. Dashboards and API queries experience zero downtime during imports.
+
+**Materialized views rebuilt per import.** The iNaturalist open dataset is published as a full snapshot, not a delta. Since every row is replaced on each import, incremental view maintenance would add complexity without benefit. Views are built under temporary names and swapped in atomically so dashboards continue serving stale-but-valid data during the rebuild.
+
+**File-lock concurrency control.** The importer uses an atomic `mkdir`-based lock with PID-based stale detection. If a previous import was killed (OOM, node restart), the next run detects the dead PID and recovers the lock automatically. This prevents concurrent imports from corrupting the table swap without requiring external coordination.
+
+**Read-only API role separation.** PostgREST connects through an `api_readonly` role that has only `SELECT` and `EXECUTE` grants. Even if PostgREST is exposed beyond localhost, the database enforces that no data can be modified through the API layer.
 
 ## Data Source
 

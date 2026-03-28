@@ -2,18 +2,17 @@ FROM python:3.12-alpine
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
-# hadolint ignore=DL3018
+# hadolint ignore=DL3018,DL3013
 RUN apk add --no-cache \
     postgresql16-client \
-    aws-cli \
     curl \
-    gzip
+    gzip \
+ && pip install --no-cache-dir boto3 tqdm
 
+COPY download.py /download.py
 COPY import.sh /import.sh
-RUN chmod +x /import.sh
-
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /import.sh /entrypoint.sh
 
 WORKDIR /data
 
