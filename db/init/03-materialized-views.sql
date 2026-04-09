@@ -36,16 +36,12 @@ CREATE MATERIALIZED VIEW mv_herpetofauna_grid AS
 SELECT null::geometry AS grid_geom, null::varchar AS quality_grade, 0::bigint AS observation_count WHERE false;
 CREATE UNIQUE INDEX ON mv_herpetofauna_grid (grid_geom, quality_grade);
 
--- Herpetofauna SAR grid (Amphibia + Reptilia) — backs the Multi-Scale Species-Area
--- Aggregation panels. Stores per-cell taxon_id arrays at 0.1 degree resolution so the
--- dashboard can compute species richness at coarser scales (0.2/0.4/0.8/1.6) by union
--- of arrays without re-scanning observations. Filters to t.rank='species' since SAR
--- is fit on species counts only.
---
--- The per-group taxa columns (amphibia_taxa, reptilia_taxa, anura_taxa, caudata_taxa,
--- testudines_taxa, serpentes_taxa) allow per-group SAR panels to skip the species
--- filtering subquery entirely — they unnest the appropriate group column directly,
--- which is faster than filtering the all-herp taxon_ids array per query.
+-- Herpetofauna SAR grid (Amphibia + Reptilia) — base MV at 0.1 degree resolution.
+-- Stores per-cell taxon_id arrays plus per-group sub-arrays so coarser scales and
+-- per-group species counts can be derived without re-scanning the 233M-row
+-- observations table. Filters to t.rank='species' since SAR is fit on species counts.
+-- This is a building block for mv_herpetofauna_sar_data (below), not queried by
+-- dashboards directly.
 CREATE MATERIALIZED VIEW mv_herpetofauna_sar_grid AS
 SELECT null::geometry AS grid_geom,
        null::varchar AS quality_grade,
@@ -58,3 +54,24 @@ SELECT null::geometry AS grid_geom,
        '{}'::int[] AS serpentes_taxa,
        0::bigint AS observation_count WHERE false;
 CREATE UNIQUE INDEX ON mv_herpetofauna_sar_grid (grid_geom, quality_grade);
+
+-- Herpetofauna SAR data — fully pre-aggregated multi-scale grid backing the
+-- Multi-Scale Species-Area Aggregation panel. One row per (scale, cell, quality_grade)
+-- with cell area in km² (geodesic, computed via ST_Area on the WGS84 geography type)
+-- and species counts broken out per taxonomic group. Built by aggregating
+-- mv_herpetofauna_sar_grid across 5 scales: 0.1° / 0.2° / 0.4° / 0.8° / 1.6°.
+-- Backs the SAR panel directly with sub-second queries (~130ms vs ~13s for the
+-- equivalent inline aggregation).
+CREATE MATERIALIZED VIEW mv_herpetofauna_sar_data AS
+SELECT null::float AS scale_deg,
+       null::geometry AS grid_geom,
+       null::varchar AS quality_grade,
+       null::float AS cell_area_km2,
+       0::bigint AS total_species,
+       0::bigint AS amphibia_species,
+       0::bigint AS reptilia_species,
+       0::bigint AS anura_species,
+       0::bigint AS caudata_species,
+       0::bigint AS testudines_species,
+       0::bigint AS serpentes_species WHERE false;
+CREATE UNIQUE INDEX ON mv_herpetofauna_sar_data (scale_deg, grid_geom, quality_grade);

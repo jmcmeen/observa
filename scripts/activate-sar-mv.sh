@@ -45,6 +45,43 @@ CREATE UNIQUE INDEX ON mv_herpetofauna_sar_grid (grid_geom, quality_grade);
 CREATE INDEX ON mv_herpetofauna_sar_grid USING GIST (grid_geom);
 GRANT SELECT ON mv_herpetofauna_sar_grid TO api_readonly;
 
+DROP MATERIALIZED VIEW IF EXISTS mv_herpetofauna_sar_data;
+CREATE MATERIALIZED VIEW mv_herpetofauna_sar_data AS
+WITH scales AS (SELECT unnest(ARRAY[0.1, 0.2, 0.4, 0.8, 1.6]::float[]) AS scale_deg),
+unnested AS (
+    SELECT
+        s.scale_deg,
+        ST_SnapToGrid(g.grid_geom, s.scale_deg) AS coarse_geom,
+        g.quality_grade,
+        tid,
+        tid = ANY(g.amphibia_taxa) AS in_amphibia,
+        tid = ANY(g.reptilia_taxa) AS in_reptilia,
+        tid = ANY(g.anura_taxa) AS in_anura,
+        tid = ANY(g.caudata_taxa) AS in_caudata,
+        tid = ANY(g.testudines_taxa) AS in_testudines,
+        tid = ANY(g.serpentes_taxa) AS in_serpentes
+    FROM mv_herpetofauna_sar_grid g
+    CROSS JOIN scales s
+    CROSS JOIN LATERAL unnest(g.taxon_ids) AS u(tid)
+)
+SELECT
+    scale_deg,
+    coarse_geom AS grid_geom,
+    quality_grade,
+    ST_Area(ST_MakeEnvelope(GREATEST(ST_X(coarse_geom) - scale_deg/2, -180), GREATEST(ST_Y(coarse_geom) - scale_deg/2, -90), LEAST(ST_X(coarse_geom) + scale_deg/2, 180), LEAST(ST_Y(coarse_geom) + scale_deg/2, 90), 4326)::geography) / 1e6 AS cell_area_km2,
+    count(DISTINCT tid) AS total_species,
+    count(DISTINCT tid) FILTER (WHERE in_amphibia) AS amphibia_species,
+    count(DISTINCT tid) FILTER (WHERE in_reptilia) AS reptilia_species,
+    count(DISTINCT tid) FILTER (WHERE in_anura) AS anura_species,
+    count(DISTINCT tid) FILTER (WHERE in_caudata) AS caudata_species,
+    count(DISTINCT tid) FILTER (WHERE in_testudines) AS testudines_species,
+    count(DISTINCT tid) FILTER (WHERE in_serpentes) AS serpentes_species
+FROM unnested
+GROUP BY 1, 2, 3;
+CREATE UNIQUE INDEX ON mv_herpetofauna_sar_data (scale_deg, grid_geom, quality_grade);
+CREATE INDEX ON mv_herpetofauna_sar_data (quality_grade, scale_deg);
+GRANT SELECT ON mv_herpetofauna_sar_data TO api_readonly;
+
 SELECT
     count(*) AS rows,
     count(DISTINCT quality_grade) AS qualities,

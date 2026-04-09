@@ -14,6 +14,7 @@ DROP MATERIALIZED VIEW IF EXISTS mv_observations_by_rank_new;
 DROP MATERIALIZED VIEW IF EXISTS mv_observations_grid_new;
 DROP MATERIALIZED VIEW IF EXISTS mv_herpetofauna_grid_new;
 DROP MATERIALIZED VIEW IF EXISTS mv_herpetofauna_sar_grid_new;
+DROP MATERIALIZED VIEW IF EXISTS mv_herpetofauna_sar_data_new;
 
 -- Phase 1: Build new MVs under temporary names (no lock on existing MVs)
 
@@ -119,6 +120,46 @@ GROUP BY 1, 2;
 CREATE UNIQUE INDEX ON mv_herpetofauna_sar_grid_new (grid_geom, quality_grade);
 CREATE INDEX ON mv_herpetofauna_sar_grid_new USING GIST (grid_geom);
 
+-- Herpetofauna SAR data — fully pre-aggregated multi-scale grid backing the
+-- Multi-Scale Species-Area Aggregation panel. Built from mv_herpetofauna_sar_grid_new.
+-- One row per (scale, cell, quality_grade) with geodesic cell area and species
+-- counts broken out per taxonomic group (total, amphibia, reptilia, anura,
+-- caudata, testudines, serpentes).
+CREATE MATERIALIZED VIEW mv_herpetofauna_sar_data_new AS
+WITH scales AS (SELECT unnest(ARRAY[0.1, 0.2, 0.4, 0.8, 1.6]::float[]) AS scale_deg),
+unnested AS (
+  SELECT
+    s.scale_deg,
+    ST_SnapToGrid(g.grid_geom, s.scale_deg) AS coarse_geom,
+    g.quality_grade,
+    tid,
+    tid = ANY(g.amphibia_taxa) AS in_amphibia,
+    tid = ANY(g.reptilia_taxa) AS in_reptilia,
+    tid = ANY(g.anura_taxa) AS in_anura,
+    tid = ANY(g.caudata_taxa) AS in_caudata,
+    tid = ANY(g.testudines_taxa) AS in_testudines,
+    tid = ANY(g.serpentes_taxa) AS in_serpentes
+  FROM mv_herpetofauna_sar_grid_new g
+  CROSS JOIN scales s
+  CROSS JOIN LATERAL unnest(g.taxon_ids) AS u(tid)
+)
+SELECT
+  scale_deg,
+  coarse_geom AS grid_geom,
+  quality_grade,
+  ST_Area(ST_MakeEnvelope(GREATEST(ST_X(coarse_geom) - scale_deg/2, -180), GREATEST(ST_Y(coarse_geom) - scale_deg/2, -90), LEAST(ST_X(coarse_geom) + scale_deg/2, 180), LEAST(ST_Y(coarse_geom) + scale_deg/2, 90), 4326)::geography) / 1e6 AS cell_area_km2,
+  count(DISTINCT tid) AS total_species,
+  count(DISTINCT tid) FILTER (WHERE in_amphibia) AS amphibia_species,
+  count(DISTINCT tid) FILTER (WHERE in_reptilia) AS reptilia_species,
+  count(DISTINCT tid) FILTER (WHERE in_anura) AS anura_species,
+  count(DISTINCT tid) FILTER (WHERE in_caudata) AS caudata_species,
+  count(DISTINCT tid) FILTER (WHERE in_testudines) AS testudines_species,
+  count(DISTINCT tid) FILTER (WHERE in_serpentes) AS serpentes_species
+FROM unnested
+GROUP BY 1, 2, 3;
+CREATE UNIQUE INDEX ON mv_herpetofauna_sar_data_new (scale_deg, grid_geom, quality_grade);
+CREATE INDEX ON mv_herpetofauna_sar_data_new (quality_grade, scale_deg);
+
 -- Phase 2: Atomic swap (dashboards see old data until this instant, then new data)
 BEGIN;
 DROP MATERIALIZED VIEW IF EXISTS mv_observations_monthly;
@@ -127,8 +168,12 @@ DROP MATERIALIZED VIEW IF EXISTS mv_top_taxa;
 DROP MATERIALIZED VIEW IF EXISTS mv_top_observers;
 DROP MATERIALIZED VIEW IF EXISTS mv_photo_licenses;
 DROP MATERIALIZED VIEW IF EXISTS mv_observations_by_rank;
+-- Note: drop mv_herpetofauna_sar_data BEFORE mv_herpetofauna_sar_grid because the
+-- former depends on the latter (built via WITH against the _new variant during phase 1).
+-- The dependency only exists during build, but rename order still matters: grid first.
 DROP MATERIALIZED VIEW IF EXISTS mv_observations_grid;
 DROP MATERIALIZED VIEW IF EXISTS mv_herpetofauna_grid;
+DROP MATERIALIZED VIEW IF EXISTS mv_herpetofauna_sar_data;
 DROP MATERIALIZED VIEW IF EXISTS mv_herpetofauna_sar_grid;
 
 ALTER MATERIALIZED VIEW mv_observations_monthly_new RENAME TO mv_observations_monthly;
@@ -140,4 +185,5 @@ ALTER MATERIALIZED VIEW mv_observations_by_rank_new RENAME TO mv_observations_by
 ALTER MATERIALIZED VIEW mv_observations_grid_new RENAME TO mv_observations_grid;
 ALTER MATERIALIZED VIEW mv_herpetofauna_grid_new RENAME TO mv_herpetofauna_grid;
 ALTER MATERIALIZED VIEW mv_herpetofauna_sar_grid_new RENAME TO mv_herpetofauna_sar_grid;
+ALTER MATERIALIZED VIEW mv_herpetofauna_sar_data_new RENAME TO mv_herpetofauna_sar_data;
 COMMIT;

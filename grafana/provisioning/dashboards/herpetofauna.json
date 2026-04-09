@@ -419,35 +419,55 @@
       "id": 12,
       "type": "table",
       "title": "Multi-Scale Species-Area Aggregation (SAR-ready)",
-      "description": "Species-area data ready for fitting with the `sars` R package or similar SAR libraries. Aggregates herp observations across 5 grid resolutions (0.1° / 0.2° / 0.4° / 0.8° / 1.6°), giving a ~256× area dynamic range. Each row is one (cell_area_km2, species_richness) data point — cells are snapped via PostGIS ST_SnapToGrid with consistent (0,0) origin so finer scales nest within coarser scales. cell_area_km2 is computed as the geodesic surface area of each cell on the WGS84 ellipsoid via ST_Area(geography), so the values correctly account for Earth curvature (cells at higher latitudes are smaller). Cells with fewer than 3 observations are excluded. To fit a SAR in R: `library(sars); df <- read.csv('export.csv'); fit <- sar_power(data.frame(a = df$cell_area_km2, s = df$species_richness)); summary(fit)`. For multi-model averaging use `sar_average()` instead of `sar_power()`.",
+      "description": "Species-area data ready for fitting with the `sars` R package or similar SAR libraries. Aggregates herp observations across 5 grid resolutions (0.1° / 0.2° / 0.4° / 0.8° / 1.6°), giving a ~256× area dynamic range. Each row is one (scale, cell) with the cell's geodesic area in km² and species counts broken out per taxonomic group: total herps, Amphibia (class), Reptilia (class), Anura (frogs), Caudata (salamanders), Testudines (turtles), and Serpentes (snakes). cell_area_km2 is computed as the geodesic surface area of each cell on the WGS84 ellipsoid via ST_Area(geography), so the values correctly account for Earth curvature (cells at higher latitudes are smaller). Backed by mv_herpetofauna_sar_data which is rebuilt on every import. To fit a SAR for any group in R: `library(sars); df <- read.csv('export.csv'); fit <- sar_power(data.frame(a = df$cell_area_km2, s = df$amphibia_species)); summary(fit)`. Substitute amphibia_species → reptilia_species / anura_species / caudata_species / testudines_species / serpentes_species / total_species for other groups. For multi-model averaging use `sar_average()` instead of `sar_power()`.",
       "datasource": { "type": "postgres", "uid": "inaturalist" },
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 53 },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 53 },
       "fieldConfig": {
         "defaults": {},
         "overrides": [
           {
             "matcher": { "id": "byName", "options": "scale_deg" },
-            "properties": [{ "id": "displayName", "value": "Scale (deg)" }, { "id": "custom.width", "value": 110 }]
+            "properties": [{ "id": "displayName", "value": "Scale (deg)" }, { "id": "custom.width", "value": 90 }]
           },
           {
             "matcher": { "id": "byName", "options": "cell_lat" },
-            "properties": [{ "id": "displayName", "value": "Cell Lat" }, { "id": "unit", "value": "degree" }]
+            "properties": [{ "id": "displayName", "value": "Lat" }, { "id": "unit", "value": "degree" }, { "id": "decimals", "value": 2 }]
           },
           {
             "matcher": { "id": "byName", "options": "cell_lon" },
-            "properties": [{ "id": "displayName", "value": "Cell Lon" }, { "id": "unit", "value": "degree" }]
+            "properties": [{ "id": "displayName", "value": "Lon" }, { "id": "unit", "value": "degree" }, { "id": "decimals", "value": 2 }]
           },
           {
             "matcher": { "id": "byName", "options": "cell_area_km2" },
             "properties": [{ "id": "displayName", "value": "Area (km²)" }, { "id": "decimals", "value": 1 }]
           },
           {
-            "matcher": { "id": "byName", "options": "species_richness" },
-            "properties": [{ "id": "displayName", "value": "Species (S)" }]
+            "matcher": { "id": "byName", "options": "total_species" },
+            "properties": [{ "id": "displayName", "value": "Total" }, { "id": "custom.width", "value": 70 }]
           },
           {
-            "matcher": { "id": "byName", "options": "total_observations" },
-            "properties": [{ "id": "displayName", "value": "Observations" }]
+            "matcher": { "id": "byName", "options": "amphibia_species" },
+            "properties": [{ "id": "displayName", "value": "Amphibia" }, { "id": "custom.width", "value": 90 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "reptilia_species" },
+            "properties": [{ "id": "displayName", "value": "Reptilia" }, { "id": "custom.width", "value": 90 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "anura_species" },
+            "properties": [{ "id": "displayName", "value": "Frogs (Anura)" }, { "id": "custom.width", "value": 110 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "caudata_species" },
+            "properties": [{ "id": "displayName", "value": "Salamanders (Caudata)" }, { "id": "custom.width", "value": 160 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "testudines_species" },
+            "properties": [{ "id": "displayName", "value": "Turtles (Testudines)" }, { "id": "custom.width", "value": 150 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "serpentes_species" },
+            "properties": [{ "id": "displayName", "value": "Snakes (Serpentes)" }, { "id": "custom.width", "value": 150 }]
           }
         ]
       },
@@ -458,7 +478,7 @@
       },
       "targets": [
         {
-          "rawSql": "WITH scales AS (SELECT unnest(ARRAY[0.1, 0.2, 0.4, 0.8, 1.6]::float[]) AS scale_deg), aggregated AS (SELECT s.scale_deg, ST_SnapToGrid(g.grid_geom, s.scale_deg) AS coarse_geom, array_agg(DISTINCT tid) AS taxon_ids, sum(g.observation_count) AS total_observations FROM mv_herpetofauna_sar_grid g CROSS JOIN scales s CROSS JOIN LATERAL unnest(g.taxon_ids) AS u(tid) WHERE g.quality_grade IN (${quality:sqlstring}) GROUP BY 1, 2 HAVING sum(g.observation_count) >= 3) SELECT scale_deg, ST_Y(coarse_geom) AS cell_lat, ST_X(coarse_geom) AS cell_lon, ST_Area(ST_MakeEnvelope(GREATEST(ST_X(coarse_geom) - scale_deg/2, -180), GREATEST(ST_Y(coarse_geom) - scale_deg/2, -90), LEAST(ST_X(coarse_geom) + scale_deg/2, 180), LEAST(ST_Y(coarse_geom) + scale_deg/2, 90), 4326)::geography) / 1e6 AS cell_area_km2, cardinality(taxon_ids) AS species_richness, total_observations FROM aggregated ORDER BY scale_deg, species_richness DESC;",
+          "rawSql": "SELECT scale_deg, ST_Y(grid_geom) AS cell_lat, ST_X(grid_geom) AS cell_lon, cell_area_km2, total_species, amphibia_species, reptilia_species, anura_species, caudata_species, testudines_species, serpentes_species FROM mv_herpetofauna_sar_data WHERE quality_grade IN (${quality:sqlstring}) ORDER BY scale_deg, total_species DESC;",
           "format": "table",
           "refId": "A"
         }
