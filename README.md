@@ -406,17 +406,12 @@ Key design decisions and the reasoning behind them:
 
 ## Contributing
 
-Contributions are welcome. To get started:
+Contributions are welcome — bug fixes, dashboards, documentation improvements, and well-scoped features. See **[CONTRIBUTING.md](CONTRIBUTING.md)** for the full guide, including:
 
-1. Fork the repository and create a feature branch from `main`.
-2. Set up the local development environment (see [Quick Start](#quick-start)).
-3. Run the test harness before submitting:
-
-   ```bash
-   ./scripts/test-local.sh
-   ```
-
-4. Open a pull request against `main` with a clear description of the change.
+- Local development setup and the synthetic test data harness
+- Running the same lint checks CI runs
+- How to add a new dashboard, docs page, alert, or schema change
+- PR submission and review checklist
 
 Bug reports and feature requests can be filed via [GitHub Issues](https://github.com/jmcmeen/observa/issues).
 
