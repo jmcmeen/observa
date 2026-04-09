@@ -398,8 +398,8 @@
     {
       "id": 11,
       "type": "table",
-      "title": "Site x Species Matrix (SAR-ready export)",
-      "description": "Site × Species matrix at 0.1° resolution (~11 km N-S × 9 km E-W at lat 36°, ~100 km² per cell). Pipe into the `sars` R/Python package for species-area curve fitting. Cell boundaries nest within the 0.5° Observation Density Map above (25 SAR cells = 1 density map cell). Cells with fewer than 5 total observations are excluded to keep the SAR fit well-supported.",
+      "title": "Site x Species Matrix (0.1° grid)",
+      "description": "Site × Species matrix at uniform 0.1° resolution (~11 km N-S × 9 km E-W at lat 36°, ~100 km² per cell). One row per grid cell with herp species richness and per-class breakdown. Useful for: beta-diversity calculations, hotspot identification, mapping species richness, and feeding into species accumulation curves via `vegan::specaccum()`. Cell boundaries nest within the 0.5° Observation Density Map above (25 SxS cells = 1 density map cell). Cells with fewer than 5 total observations are excluded. NOTE: This is NOT a SAR-ready export — uniform-area cells don't have enough area dynamic range to support a meaningful species-area curve fit. For SAR fitting, use the Multi-Scale Species-Area Aggregation panel below.",
       "datasource": { "type": "postgres", "uid": "inaturalist" },
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 45 },
       "fieldConfig": { "defaults": {}, "overrides": [] },
