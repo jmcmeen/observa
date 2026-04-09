@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 - **Schema definition reference** — Added [docs/schema-definition.md](docs/schema-definition.md), a terse machine-readable schema cheat sheet designed to be loaded as context by LLM coding assistants when writing SQL against Observa. Covers exact column types, materialized view columns, RPC function signatures, indexes, the canonical ancestry-filter idiom, useful iNaturalist taxon IDs (Amphibia, Reptilia, Aves, Mammalia, etc.), Grafana macro reference, and a Gotchas section explicitly flagging the non-existent `iconic_taxon_name` column and other footguns.
 - **Cross-linked data-model and schema-definition docs** — Both reference docs now point at each other in their headers, with `data-model.md` framed as the prose/tutorial source of truth and `schema-definition.md` framed as the structured/reference source of truth.
 - **Fixed ancestry filter example in data-model.md** — Updated the worked example to use the correct wrapped-delimiter pattern, with a callout explaining why the naive form is buggy.
+- **Contribution guide** — Added [CONTRIBUTING.md](CONTRIBUTING.md) at the repo root with sections covering bug reports, local development setup, the synthetic test data harness, running CI checks locally, project layout, and step-by-step recipes for common contribution tasks (adding a dashboard, modifying an alert, changing the schema, modifying the importer). Slimmed the existing Contributing section in the README to point at the new file.
 
 ### Project metadata
 
