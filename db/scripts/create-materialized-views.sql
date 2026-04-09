@@ -12,6 +12,7 @@ DROP MATERIALIZED VIEW IF EXISTS mv_top_observers_new;
 DROP MATERIALIZED VIEW IF EXISTS mv_photo_licenses_new;
 DROP MATERIALIZED VIEW IF EXISTS mv_observations_by_rank_new;
 DROP MATERIALIZED VIEW IF EXISTS mv_observations_grid_new;
+DROP MATERIALIZED VIEW IF EXISTS mv_herpetofauna_grid_new;
 
 -- Phase 1: Build new MVs under temporary names (no lock on existing MVs)
 
@@ -70,6 +71,21 @@ GROUP BY 1;
 CREATE UNIQUE INDEX ON mv_observations_grid_new (grid_geom);
 CREATE INDEX ON mv_observations_grid_new USING GIST (grid_geom);
 
+-- Herpetofauna density grid (Amphibia + Reptilia) at 0.5 degree resolution.
+-- Grouped by quality_grade so the Herpetofauna dashboard's quality variable still filters.
+CREATE MATERIALIZED VIEW mv_herpetofauna_grid_new AS
+SELECT ST_SnapToGrid(o.geom, 0.5) AS grid_geom,
+       o.quality_grade,
+       count(*) AS observation_count
+FROM observations o
+JOIN taxa t ON o.taxon_id = t.taxon_id
+WHERE o.geom IS NOT NULL
+  AND ((('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978)
+    OR (('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036))
+GROUP BY 1, 2;
+CREATE UNIQUE INDEX ON mv_herpetofauna_grid_new (grid_geom, quality_grade);
+CREATE INDEX ON mv_herpetofauna_grid_new USING GIST (grid_geom);
+
 -- Phase 2: Atomic swap (dashboards see old data until this instant, then new data)
 BEGIN;
 DROP MATERIALIZED VIEW IF EXISTS mv_observations_monthly;
@@ -79,6 +95,7 @@ DROP MATERIALIZED VIEW IF EXISTS mv_top_observers;
 DROP MATERIALIZED VIEW IF EXISTS mv_photo_licenses;
 DROP MATERIALIZED VIEW IF EXISTS mv_observations_by_rank;
 DROP MATERIALIZED VIEW IF EXISTS mv_observations_grid;
+DROP MATERIALIZED VIEW IF EXISTS mv_herpetofauna_grid;
 
 ALTER MATERIALIZED VIEW mv_observations_monthly_new RENAME TO mv_observations_monthly;
 ALTER MATERIALIZED VIEW mv_quality_grade_counts_new RENAME TO mv_quality_grade_counts;
@@ -87,4 +104,5 @@ ALTER MATERIALIZED VIEW mv_top_observers_new RENAME TO mv_top_observers;
 ALTER MATERIALIZED VIEW mv_photo_licenses_new RENAME TO mv_photo_licenses;
 ALTER MATERIALIZED VIEW mv_observations_by_rank_new RENAME TO mv_observations_by_rank;
 ALTER MATERIALIZED VIEW mv_observations_grid_new RENAME TO mv_observations_grid;
+ALTER MATERIALIZED VIEW mv_herpetofauna_grid_new RENAME TO mv_herpetofauna_grid;
 COMMIT;

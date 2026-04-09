@@ -28,3 +28,10 @@ CREATE UNIQUE INDEX ON mv_observations_by_rank (rank);
 CREATE MATERIALIZED VIEW mv_observations_grid AS
 SELECT null::geometry AS grid_geom, 0::bigint AS observation_count WHERE false;
 CREATE UNIQUE INDEX ON mv_observations_grid (grid_geom);
+
+-- Herpetofauna density grid (Amphibia + Reptilia) — backs the Herpetofauna dashboard
+-- Observation Density Map. Uses 0.5 degree cells (~55 km at mid-latitudes), grouped
+-- by quality_grade so the dashboard's quality template variable still works.
+CREATE MATERIALIZED VIEW mv_herpetofauna_grid AS
+SELECT null::geometry AS grid_geom, null::varchar AS quality_grade, 0::bigint AS observation_count WHERE false;
+CREATE UNIQUE INDEX ON mv_herpetofauna_grid (grid_geom, quality_grade);

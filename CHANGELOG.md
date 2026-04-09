@@ -6,7 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Features
 
-- **Herpetofauna dashboard** — New Grafana dashboard for amphibian and reptile observations: total/per-class observation counts, unique species, monthly trends by class, cumulative species discovered, seasonality, observation map, top 15 families (computed via ancestry traversal), species richness table, and a SAR-ready site × species matrix export for downstream species-area curve fitting in the `sars` R/Python packages.
+- **Herpetofauna dashboard** — New Grafana dashboard for amphibian and reptile observations: total/per-class observation counts, unique species, monthly trends by class, cumulative species discovered, seasonality, observation density map, top 15 families (computed via ancestry traversal), species richness table, and a SAR-ready site × species matrix export for downstream species-area curve fitting in the `sars` R/Python packages.
+- **`mv_herpetofauna_grid` materialized view** — Pre-aggregated 0.5 degree (~55 km) density grid for Amphibia + Reptilia observations, grouped by `quality_grade` so dashboard quality variables still filter. Backs the Herpetofauna Observation Density Map. Built and atomically swapped on each import alongside the other materialized views. Reduced map panel load from ~22 s (inline ancestry-filtered aggregation against the 233 M-row observations table) to ~28 ms (sequential scan of ~62 K pre-aggregated rows). Added to both `db/init/03-materialized-views.sql` (empty stub) and `db/scripts/create-materialized-views.sql` (per-import build + swap).
 
 ### Bug Fixes
 

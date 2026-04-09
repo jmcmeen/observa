@@ -267,7 +267,8 @@
     {
       "id": 8,
       "type": "geomap",
-      "title": "Observation Map",
+      "title": "Observation Density Map",
+      "description": "Density grid aggregated to 0.5 degree cells (~55 km at mid-latitudes). Marker size scales with observation count per cell.",
       "datasource": { "type": "postgres", "uid": "inaturalist" },
       "gridPos": { "h": 12, "w": 24, "x": 0, "y": 23 },
       "options": {
@@ -276,11 +277,11 @@
         "layers": [
           {
             "type": "markers",
-            "name": "Observations",
+            "name": "Herp Density",
             "config": {
               "showLegend": true,
               "style": {
-                "size": { "fixed": 4 },
+                "size": { "field": "metric", "min": 5, "max": 40 },
                 "color": { "fixed": "dark-green" },
                 "opacity": 0.6
               }
@@ -291,7 +292,7 @@
       },
       "targets": [
         {
-          "rawSql": "SELECT o.latitude, o.longitude, CASE WHEN ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978 THEN 'Amphibia' WHEN ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036 THEN 'Reptilia' END AS class, t.name AS taxon_name FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE ((('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978) OR (('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036)) AND o.latitude IS NOT NULL AND o.longitude IS NOT NULL AND o.quality_grade IN (${quality:sqlstring}) AND $__timeFilter(o.observed_on);",
+          "rawSql": "SELECT ST_Y(grid_geom) AS latitude, ST_X(grid_geom) AS longitude, sum(observation_count) AS metric FROM mv_herpetofauna_grid WHERE quality_grade IN (${quality:sqlstring}) GROUP BY 1, 2 ORDER BY metric DESC;",
           "format": "table",
           "refId": "A"
         }
