@@ -438,7 +438,7 @@
   "time": { "from": "now-10y", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Herpetofauna Dashboard",
+  "title": "Herpetofauna Observations",
   "uid": "observa-herps-v1",
   "version": 1
 }
