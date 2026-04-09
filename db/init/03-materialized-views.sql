@@ -37,10 +37,24 @@ SELECT null::geometry AS grid_geom, null::varchar AS quality_grade, 0::bigint AS
 CREATE UNIQUE INDEX ON mv_herpetofauna_grid (grid_geom, quality_grade);
 
 -- Herpetofauna SAR grid (Amphibia + Reptilia) — backs the Multi-Scale Species-Area
--- Aggregation panel. Stores per-cell taxon_id arrays at 0.1 degree resolution so the
+-- Aggregation panels. Stores per-cell taxon_id arrays at 0.1 degree resolution so the
 -- dashboard can compute species richness at coarser scales (0.2/0.4/0.8/1.6) by union
 -- of arrays without re-scanning observations. Filters to t.rank='species' since SAR
 -- is fit on species counts only.
+--
+-- The per-group taxa columns (amphibia_taxa, reptilia_taxa, anura_taxa, caudata_taxa,
+-- testudines_taxa, serpentes_taxa) allow per-group SAR panels to skip the species
+-- filtering subquery entirely — they unnest the appropriate group column directly,
+-- which is faster than filtering the all-herp taxon_ids array per query.
 CREATE MATERIALIZED VIEW mv_herpetofauna_sar_grid AS
-SELECT null::geometry AS grid_geom, null::varchar AS quality_grade, '{}'::int[] AS taxon_ids, 0::bigint AS observation_count WHERE false;
+SELECT null::geometry AS grid_geom,
+       null::varchar AS quality_grade,
+       '{}'::int[] AS taxon_ids,
+       '{}'::int[] AS amphibia_taxa,
+       '{}'::int[] AS reptilia_taxa,
+       '{}'::int[] AS anura_taxa,
+       '{}'::int[] AS caudata_taxa,
+       '{}'::int[] AS testudines_taxa,
+       '{}'::int[] AS serpentes_taxa,
+       0::bigint AS observation_count WHERE false;
 CREATE UNIQUE INDEX ON mv_herpetofauna_sar_grid (grid_geom, quality_grade);

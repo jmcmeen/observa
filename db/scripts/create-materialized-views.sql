@@ -88,14 +88,26 @@ CREATE UNIQUE INDEX ON mv_herpetofauna_grid_new (grid_geom, quality_grade);
 CREATE INDEX ON mv_herpetofauna_grid_new USING GIST (grid_geom);
 
 -- Herpetofauna SAR grid at 0.1 degree resolution with per-cell taxon_id arrays.
--- Backs the Multi-Scale Species-Area Aggregation panel — the dashboard query unions
+-- Backs the Multi-Scale Species-Area Aggregation panels — the dashboard queries union
 -- taxon_ids across cells to compute species richness at coarser scales without
 -- re-scanning the 233M-row observations table. Filtered to t.rank='species' since
 -- SAR is fit on species counts only.
+--
+-- Per-group taxa columns (amphibia/reptilia/anura/caudata/testudines/serpentes_taxa)
+-- are computed via array_agg(...) FILTER so each group's panel can unnest its own
+-- column directly without a species-filter subquery. iNat taxon IDs:
+--   Amphibia=20978, Reptilia=26036, Anura=20979, Caudata=26718,
+--   Testudines=39532, Serpentes=85553
 CREATE MATERIALIZED VIEW mv_herpetofauna_sar_grid_new AS
 SELECT ST_SnapToGrid(o.geom, 0.1) AS grid_geom,
        o.quality_grade,
        array_agg(DISTINCT o.taxon_id ORDER BY o.taxon_id) AS taxon_ids,
+       COALESCE(array_agg(DISTINCT o.taxon_id) FILTER (WHERE ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978), '{}'::int[]) AS amphibia_taxa,
+       COALESCE(array_agg(DISTINCT o.taxon_id) FILTER (WHERE ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036), '{}'::int[]) AS reptilia_taxa,
+       COALESCE(array_agg(DISTINCT o.taxon_id) FILTER (WHERE ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20979/%' OR t.taxon_id = 20979), '{}'::int[]) AS anura_taxa,
+       COALESCE(array_agg(DISTINCT o.taxon_id) FILTER (WHERE ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26718/%' OR t.taxon_id = 26718), '{}'::int[]) AS caudata_taxa,
+       COALESCE(array_agg(DISTINCT o.taxon_id) FILTER (WHERE ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/39532/%' OR t.taxon_id = 39532), '{}'::int[]) AS testudines_taxa,
+       COALESCE(array_agg(DISTINCT o.taxon_id) FILTER (WHERE ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/85553/%' OR t.taxon_id = 85553), '{}'::int[]) AS serpentes_taxa,
        count(*) AS observation_count
 FROM observations o
 JOIN taxa t ON o.taxon_id = t.taxon_id
