@@ -35,3 +35,12 @@ CREATE UNIQUE INDEX ON mv_observations_grid (grid_geom);
 CREATE MATERIALIZED VIEW mv_herpetofauna_grid AS
 SELECT null::geometry AS grid_geom, null::varchar AS quality_grade, 0::bigint AS observation_count WHERE false;
 CREATE UNIQUE INDEX ON mv_herpetofauna_grid (grid_geom, quality_grade);
+
+-- Herpetofauna SAR grid (Amphibia + Reptilia) — backs the Multi-Scale Species-Area
+-- Aggregation panel. Stores per-cell taxon_id arrays at 0.1 degree resolution so the
+-- dashboard can compute species richness at coarser scales (0.2/0.4/0.8/1.6) by union
+-- of arrays without re-scanning observations. Filters to t.rank='species' since SAR
+-- is fit on species counts only.
+CREATE MATERIALIZED VIEW mv_herpetofauna_sar_grid AS
+SELECT null::geometry AS grid_geom, null::varchar AS quality_grade, '{}'::int[] AS taxon_ids, 0::bigint AS observation_count WHERE false;
+CREATE UNIQUE INDEX ON mv_herpetofauna_sar_grid (grid_geom, quality_grade);

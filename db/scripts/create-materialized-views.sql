@@ -13,6 +13,7 @@ DROP MATERIALIZED VIEW IF EXISTS mv_photo_licenses_new;
 DROP MATERIALIZED VIEW IF EXISTS mv_observations_by_rank_new;
 DROP MATERIALIZED VIEW IF EXISTS mv_observations_grid_new;
 DROP MATERIALIZED VIEW IF EXISTS mv_herpetofauna_grid_new;
+DROP MATERIALIZED VIEW IF EXISTS mv_herpetofauna_sar_grid_new;
 
 -- Phase 1: Build new MVs under temporary names (no lock on existing MVs)
 
@@ -86,6 +87,26 @@ GROUP BY 1, 2;
 CREATE UNIQUE INDEX ON mv_herpetofauna_grid_new (grid_geom, quality_grade);
 CREATE INDEX ON mv_herpetofauna_grid_new USING GIST (grid_geom);
 
+-- Herpetofauna SAR grid at 0.1 degree resolution with per-cell taxon_id arrays.
+-- Backs the Multi-Scale Species-Area Aggregation panel — the dashboard query unions
+-- taxon_ids across cells to compute species richness at coarser scales without
+-- re-scanning the 233M-row observations table. Filtered to t.rank='species' since
+-- SAR is fit on species counts only.
+CREATE MATERIALIZED VIEW mv_herpetofauna_sar_grid_new AS
+SELECT ST_SnapToGrid(o.geom, 0.1) AS grid_geom,
+       o.quality_grade,
+       array_agg(DISTINCT o.taxon_id ORDER BY o.taxon_id) AS taxon_ids,
+       count(*) AS observation_count
+FROM observations o
+JOIN taxa t ON o.taxon_id = t.taxon_id
+WHERE o.geom IS NOT NULL
+  AND t.rank = 'species'
+  AND ((('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978)
+    OR (('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036))
+GROUP BY 1, 2;
+CREATE UNIQUE INDEX ON mv_herpetofauna_sar_grid_new (grid_geom, quality_grade);
+CREATE INDEX ON mv_herpetofauna_sar_grid_new USING GIST (grid_geom);
+
 -- Phase 2: Atomic swap (dashboards see old data until this instant, then new data)
 BEGIN;
 DROP MATERIALIZED VIEW IF EXISTS mv_observations_monthly;
@@ -96,6 +117,7 @@ DROP MATERIALIZED VIEW IF EXISTS mv_photo_licenses;
 DROP MATERIALIZED VIEW IF EXISTS mv_observations_by_rank;
 DROP MATERIALIZED VIEW IF EXISTS mv_observations_grid;
 DROP MATERIALIZED VIEW IF EXISTS mv_herpetofauna_grid;
+DROP MATERIALIZED VIEW IF EXISTS mv_herpetofauna_sar_grid;
 
 ALTER MATERIALIZED VIEW mv_observations_monthly_new RENAME TO mv_observations_monthly;
 ALTER MATERIALIZED VIEW mv_quality_grade_counts_new RENAME TO mv_quality_grade_counts;
@@ -105,4 +127,5 @@ ALTER MATERIALIZED VIEW mv_photo_licenses_new RENAME TO mv_photo_licenses;
 ALTER MATERIALIZED VIEW mv_observations_by_rank_new RENAME TO mv_observations_by_rank;
 ALTER MATERIALIZED VIEW mv_observations_grid_new RENAME TO mv_observations_grid;
 ALTER MATERIALIZED VIEW mv_herpetofauna_grid_new RENAME TO mv_herpetofauna_grid;
+ALTER MATERIALIZED VIEW mv_herpetofauna_sar_grid_new RENAME TO mv_herpetofauna_sar_grid;
 COMMIT;
