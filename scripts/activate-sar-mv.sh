@@ -26,6 +26,12 @@ SELECT
     ST_SnapToGrid(o.geom, 0.1) AS grid_geom,
     o.quality_grade,
     array_agg(DISTINCT o.taxon_id ORDER BY o.taxon_id) AS taxon_ids,
+    COALESCE(array_agg(DISTINCT o.taxon_id) FILTER (WHERE ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978), '{}'::int[]) AS amphibia_taxa,
+    COALESCE(array_agg(DISTINCT o.taxon_id) FILTER (WHERE ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036), '{}'::int[]) AS reptilia_taxa,
+    COALESCE(array_agg(DISTINCT o.taxon_id) FILTER (WHERE ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20979/%' OR t.taxon_id = 20979), '{}'::int[]) AS anura_taxa,
+    COALESCE(array_agg(DISTINCT o.taxon_id) FILTER (WHERE ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26718/%' OR t.taxon_id = 26718), '{}'::int[]) AS caudata_taxa,
+    COALESCE(array_agg(DISTINCT o.taxon_id) FILTER (WHERE ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/39532/%' OR t.taxon_id = 39532), '{}'::int[]) AS testudines_taxa,
+    COALESCE(array_agg(DISTINCT o.taxon_id) FILTER (WHERE ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/85553/%' OR t.taxon_id = 85553), '{}'::int[]) AS serpentes_taxa,
     count(*) AS observation_count
 FROM observations o
 JOIN taxa t ON o.taxon_id = t.taxon_id
