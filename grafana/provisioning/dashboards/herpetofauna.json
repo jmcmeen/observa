@@ -268,7 +268,7 @@
       "id": 8,
       "type": "geomap",
       "title": "Observation Density Map",
-      "description": "Density grid aggregated to 0.5 degree cells (~55 km at mid-latitudes). Marker size scales with observation count per cell.",
+      "description": "Density grid at 0.5° resolution (~55 km N-S × 45 km E-W at lat 36°, ~2,500 km² per cell). Marker size scales with observations per cell. Cell boundaries nest with the Site x Species Matrix below — each density cell contains exactly 25 SAR cells (5×5 block of 0.1° cells), so a hotspot here corresponds to up to 25 rows in the SAR export.",
       "datasource": { "type": "postgres", "uid": "inaturalist" },
       "gridPos": { "h": 12, "w": 24, "x": 0, "y": 23 },
       "options": {
@@ -399,7 +399,7 @@
       "id": 11,
       "type": "table",
       "title": "Site x Species Matrix (SAR-ready export)",
-      "description": "Grid cells (~0.1 deg, ~11 km) with species counts -- pipe this into the sars R package for species-area curve fitting",
+      "description": "Site × Species matrix at 0.1° resolution (~11 km N-S × 9 km E-W at lat 36°, ~100 km² per cell). Pipe into the `sars` R/Python package for species-area curve fitting. Cell boundaries nest within the 0.5° Observation Density Map above (25 SAR cells = 1 density map cell). Cells with fewer than 5 total observations are excluded to keep the SAR fit well-supported.",
       "datasource": { "type": "postgres", "uid": "inaturalist" },
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 45 },
       "fieldConfig": { "defaults": {}, "overrides": [] },
@@ -409,7 +409,7 @@
       },
       "targets": [
         {
-          "rawSql": "SELECT round(o.latitude::numeric, 1) AS grid_lat, round(o.longitude::numeric, 1) AS grid_lon, count(DISTINCT t.taxon_id) AS species_richness, count(*) AS total_observations, count(DISTINCT t.taxon_id) FILTER (WHERE ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978) AS amphibia_species, count(DISTINCT t.taxon_id) FILTER (WHERE ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036) AS reptilia_species FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE ((('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978) OR (('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036)) AND t.rank = 'species' AND o.quality_grade IN (${quality:sqlstring}) AND o.latitude IS NOT NULL AND o.longitude IS NOT NULL AND $__timeFilter(o.observed_on) GROUP BY 1, 2 HAVING count(*) >= 5 ORDER BY species_richness DESC;",
+          "rawSql": "SELECT ST_Y(ST_SnapToGrid(o.geom, 0.1)) AS grid_lat, ST_X(ST_SnapToGrid(o.geom, 0.1)) AS grid_lon, count(DISTINCT t.taxon_id) AS species_richness, count(*) AS total_observations, count(DISTINCT t.taxon_id) FILTER (WHERE ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978) AS amphibia_species, count(DISTINCT t.taxon_id) FILTER (WHERE ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036) AS reptilia_species FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE ((('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978) OR (('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036)) AND t.rank = 'species' AND o.quality_grade IN (${quality:sqlstring}) AND o.geom IS NOT NULL AND $__timeFilter(o.observed_on) GROUP BY 1, 2 HAVING count(*) >= 5 ORDER BY species_richness DESC;",
           "format": "table",
           "refId": "A"
         }
