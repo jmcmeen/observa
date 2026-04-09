@@ -291,7 +291,7 @@
       },
       "targets": [
         {
-          "rawSql": "SELECT o.latitude, o.longitude, CASE WHEN ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978 THEN 'Amphibia' WHEN ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036 THEN 'Reptilia' END AS class, t.name AS taxon_name FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE ((('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978) OR (('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036)) AND o.latitude IS NOT NULL AND o.longitude IS NOT NULL AND o.quality_grade IN (${quality:sqlstring}) AND $__timeFilter(o.observed_on) LIMIT 5000;",
+          "rawSql": "SELECT o.latitude, o.longitude, CASE WHEN ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978 THEN 'Amphibia' WHEN ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036 THEN 'Reptilia' END AS class, t.name AS taxon_name FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE ((('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978) OR (('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036)) AND o.latitude IS NOT NULL AND o.longitude IS NOT NULL AND o.quality_grade IN (${quality:sqlstring}) AND $__timeFilter(o.observed_on);",
           "format": "table",
           "refId": "A"
         }
