@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.2.1 — 2026-04-09
+
+### Features
+
+- **Herpetofauna dashboard** — New Grafana dashboard for amphibian and reptile observations: total/per-class observation counts, unique species, monthly trends by class, cumulative species discovered, seasonality, observation map, top 15 families (computed via ancestry traversal), species richness table, and a SAR-ready site × species matrix export for downstream species-area curve fitting in the `sars` R/Python packages.
+
+### Bug Fixes
+
+- **Ancestry filter pattern corrected** — The naive `t.ancestry LIKE '%/X/%'` pattern documented in `data-model.md` and used by some dashboards missed direct child taxa whose ancestry string ended in `/X` with no trailing slash (e.g., orders directly under a class). All new code uses the wrapped-delimiter form `('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/X/%'`. Existing dashboards using the buggy pattern continue to work for species-rank queries but should be migrated.
+- **`import-stale` alert no longer false-fires on cache-skip** — The alert query previously looked for the most recent `'completed'` row in `import_log`, which made it fire whenever upstream iNaturalist S3 was unchanged for >36 hours (i.e., almost always, since iNat publishes monthly). The importer now writes a `status='skipped'` row to `import_log` on each cache-skip, and the alert query was updated to `WHERE status IN ('completed', 'skipped')` so a healthy nightly skip counts as a check-in. The skip-decision logic in `import.sh` was also updated to ignore prior `'skipped'` rows when deciding whether to re-import, so consecutive skips don't trigger spurious re-imports.
+- **`import-count-drop` alert no longer false-fires on first run** — The alert used an `INNER JOIN` between current and previous completed imports, which returned zero rows (NoData → alerting) whenever there was only one completed import in the database. Rewrote the query as a `LEFT JOIN LATERAL` wrapped in `COALESCE(..., 0)` so it always returns exactly one row containing `pct_drop`, defaulting to 0 when there's no baseline to compare against.
+- **`v_health` view reflects skipped runs** — The PostgREST health endpoint previously filtered to `status IN ('completed', 'failed')`, which caused `hours_since_import` to climb indefinitely between monthly iNaturalist publishes — making external uptime monitors flag a healthy system as broken. Rewrote the view as two CTEs: `last_import_status`, `last_import_at`, `hours_since_import`, `last_import_duration_seconds`, and `last_error` now reflect the most recent terminal run of any kind (`completed`, `skipped`, or `failed`), while `observations_count`, `photos_count`, `taxa_count`, and `observers_count` continue to come from the most recent successful `completed` import. Column names and order are unchanged, so existing consumers of `/v_health` are not affected.
+
+### Documentation
+
+- **Schema definition reference** — Added [docs/schema-definition.md](docs/schema-definition.md), a terse machine-readable schema cheat sheet designed to be loaded as context by LLM coding assistants when writing SQL against Observa. Covers exact column types, materialized view columns, RPC function signatures, indexes, the canonical ancestry-filter idiom, useful iNaturalist taxon IDs (Amphibia, Reptilia, Aves, Mammalia, etc.), Grafana macro reference, and a Gotchas section explicitly flagging the non-existent `iconic_taxon_name` column and other footguns.
+- **Cross-linked data-model and schema-definition docs** — Both reference docs now point at each other in their headers, with `data-model.md` framed as the prose/tutorial source of truth and `schema-definition.md` framed as the structured/reference source of truth.
+- **Fixed ancestry filter example in data-model.md** — Updated the worked example to use the correct wrapped-delimiter pattern, with a callout explaining why the naive form is buggy.
+
+### Project metadata
+
+- **Citation File Format manifest** — Added [CITATION.cff](CITATION.cff) (CFF 1.2.0) so GitHub's "Cite this repository" button and Zenodo can produce structured citations on release. Includes a `references` block pointing at the underlying iNaturalist Open Dataset so downstream users know to cite both Observa and the source data.
+
 ## v0.2.0 — 2026-03-28
 
 ### Security

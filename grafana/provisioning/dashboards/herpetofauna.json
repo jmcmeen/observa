@@ -1,0 +1,444 @@
+{
+  "annotations": { "list": [] },
+  "description": "Herpetofauna (Amphibia & Reptilia) observations from the iNaturalist Open Dataset via Observa",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 100,
+      "type": "row",
+      "title": "Overview",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Total Herp Observations",
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 10000 },
+              { "color": "red", "value": 100000 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT count(*) AS total FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE ((('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978) OR (('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036)) AND o.quality_grade IN (${quality:sqlstring});",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Amphibia Observations",
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "#37872D" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT count(*) AS amphibia FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE (('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978) AND o.quality_grade IN (${quality:sqlstring});",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Reptilia Observations",
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "#C4162A" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT count(*) AS reptilia FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE (('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036) AND o.quality_grade IN (${quality:sqlstring});",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Unique Species",
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "#1F60C4" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT count(DISTINCT t.taxon_id) AS species FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE ((('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978) OR (('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036)) AND t.rank = 'species' AND o.quality_grade IN (${quality:sqlstring});",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 101,
+      "type": "row",
+      "title": "Temporal Trends",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Monthly Observations by Class",
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 6 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "gradientMode": "opacity",
+            "pointSize": 5,
+            "showPoints": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Amphibia" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#37872D" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Reptilia" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#C4162A" } }]
+          }
+        ]
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT date_trunc('month', o.observed_on)::timestamptz AS time, count(*) FILTER (WHERE ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978) AS \"Amphibia\", count(*) FILTER (WHERE ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036) AS \"Reptilia\" FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE ((('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978) OR (('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036)) AND o.quality_grade IN (${quality:sqlstring}) AND o.observed_on IS NOT NULL AND $__timeFilter(o.observed_on) GROUP BY 1 ORDER BY 1;",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Cumulative Species Discovered Over Time",
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Amphibia" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#37872D" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Reptilia" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#C4162A" } }]
+          }
+        ]
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "rawSql": "WITH first_seen AS (SELECT CASE WHEN ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978 THEN 'Amphibia' WHEN ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036 THEN 'Reptilia' END AS class, t.taxon_id, min(o.observed_on) AS first_obs FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE ((('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978) OR (('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036)) AND t.rank = 'species' AND o.quality_grade IN (${quality:sqlstring}) AND o.observed_on IS NOT NULL AND $__timeFilter(o.observed_on) GROUP BY 1, 2), monthly AS (SELECT date_trunc('month', first_obs)::timestamptz AS month, count(*) FILTER (WHERE class = 'Amphibia') AS new_amphibia, count(*) FILTER (WHERE class = 'Reptilia') AS new_reptilia FROM first_seen GROUP BY 1) SELECT month AS time, sum(new_amphibia) OVER (ORDER BY month) AS \"Amphibia\", sum(new_reptilia) OVER (ORDER BY month) AS \"Reptilia\" FROM monthly ORDER BY 1;",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "barchart",
+      "title": "Observation Seasonality (Month of Year)",
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "stacking": { "mode": "normal", "group": "A" }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Amphibia" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#37872D" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Reptilia" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#C4162A" } }]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "auto",
+        "xTickLabelRotation": 0,
+        "xField": "month",
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT to_char(to_date(EXTRACT(month FROM o.observed_on)::text, 'MM'), 'MM Mon') AS month, count(*) FILTER (WHERE ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978) AS \"Amphibia\", count(*) FILTER (WHERE ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036) AS \"Reptilia\" FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE ((('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978) OR (('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036)) AND o.quality_grade IN (${quality:sqlstring}) AND o.observed_on IS NOT NULL GROUP BY 1 ORDER BY 1;",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 102,
+      "type": "row",
+      "title": "Spatial",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 8,
+      "type": "geomap",
+      "title": "Observation Map",
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 23 },
+      "options": {
+        "view": { "id": "coords", "lat": 36.5, "lon": -82.5, "zoom": 6 },
+        "basemap": { "type": "default", "name": "OpenStreetMap" },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Observations",
+            "config": {
+              "showLegend": true,
+              "style": {
+                "size": { "fixed": 4 },
+                "color": { "fixed": "dark-green" },
+                "opacity": 0.6
+              }
+            },
+            "location": { "mode": "coords", "latitude": "latitude", "longitude": "longitude" }
+          }
+        ]
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT o.latitude, o.longitude, CASE WHEN ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978 THEN 'Amphibia' WHEN ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036 THEN 'Reptilia' END AS class, t.name AS taxon_name FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE ((('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978) OR (('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036)) AND o.latitude IS NOT NULL AND o.longitude IS NOT NULL AND o.quality_grade IN (${quality:sqlstring}) AND $__timeFilter(o.observed_on) LIMIT 5000;",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 103,
+      "type": "row",
+      "title": "Taxonomy",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 35 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 9,
+      "type": "piechart",
+      "title": "Top 15 Families",
+      "description": "Family-level counts computed by traversing each observation's taxon ancestry and matching family-rank ancestors",
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" } },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] },
+        "pieType": "donut",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "rawSql": "WITH obs_ancestors AS (SELECT string_to_array(t.ancestry, '/')::int[] AS ancestors FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE ((('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978) OR (('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036)) AND t.ancestry IS NOT NULL AND t.ancestry <> '' AND o.quality_grade IN (${quality:sqlstring})) SELECT fam.name AS family, count(*) AS obs_count FROM obs_ancestors oa JOIN taxa fam ON fam.taxon_id = ANY(oa.ancestors) WHERE fam.rank = 'family' GROUP BY fam.name ORDER BY obs_count DESC LIMIT 15;",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Species Richness Table",
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "obs_count" },
+            "properties": [
+              { "id": "custom.width", "value": 120 },
+              { "id": "displayName", "value": "Observations" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "species" },
+            "properties": [
+              { "id": "displayName", "value": "Species" },
+              { "id": "custom.filterable", "value": true }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "class" },
+            "properties": [
+              { "id": "displayName", "value": "Class" },
+              { "id": "custom.filterable", "value": true }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "first_observed" },
+            "properties": [{ "id": "displayName", "value": "First Observed" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "last_observed" },
+            "properties": [{ "id": "displayName", "value": "Last Observed" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "approx_sites" },
+            "properties": [{ "id": "displayName", "value": "Approx Sites" }]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [{ "displayName": "Observations", "desc": true }],
+        "footer": { "enablePagination": true, "show": false, "reducer": ["sum"] }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT t.name AS species, CASE WHEN ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978 THEN 'Amphibia' WHEN ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036 THEN 'Reptilia' END AS class, count(*) AS obs_count, min(o.observed_on) AS first_observed, max(o.observed_on) AS last_observed, count(DISTINCT concat(round(o.latitude::numeric, 1), ',', round(o.longitude::numeric, 1))) AS approx_sites FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE ((('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978) OR (('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036)) AND t.rank = 'species' AND o.quality_grade IN (${quality:sqlstring}) AND $__timeFilter(o.observed_on) GROUP BY 1, 2 ORDER BY obs_count DESC;",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 104,
+      "type": "row",
+      "title": "SAR / Export",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 44 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Site x Species Matrix (SAR-ready export)",
+      "description": "Grid cells (~0.1 deg, ~11 km) with species counts -- pipe this into the sars R package for species-area curve fitting",
+      "datasource": { "type": "postgres", "uid": "inaturalist" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 45 },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": {
+        "showHeader": true,
+        "footer": { "enablePagination": true, "show": false, "reducer": ["sum"] }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT round(o.latitude::numeric, 1) AS grid_lat, round(o.longitude::numeric, 1) AS grid_lon, count(DISTINCT t.taxon_id) AS species_richness, count(*) AS total_observations, count(DISTINCT t.taxon_id) FILTER (WHERE ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978) AS amphibia_species, count(DISTINCT t.taxon_id) FILTER (WHERE ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036) AS reptilia_species FROM observations o JOIN taxa t ON o.taxon_id = t.taxon_id WHERE ((('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/20978/%' OR t.taxon_id = 20978) OR (('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/26036/%' OR t.taxon_id = 26036)) AND t.rank = 'species' AND o.quality_grade IN (${quality:sqlstring}) AND o.latitude IS NOT NULL AND o.longitude IS NOT NULL AND $__timeFilter(o.observed_on) GROUP BY 1, 2 HAVING count(*) >= 5 ORDER BY species_richness DESC;",
+          "format": "table",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["herpetofauna", "bioamla", "inaturalist", "observa", "ecology"],
+  "templating": {
+    "list": [
+      {
+        "name": "quality",
+        "type": "custom",
+        "label": "Quality Grade",
+        "multi": true,
+        "includeAll": false,
+        "current": { "text": ["research"], "value": ["research"] },
+        "options": [
+          { "text": "research", "value": "research", "selected": true },
+          { "text": "needs_id", "value": "needs_id", "selected": false },
+          { "text": "casual", "value": "casual", "selected": false }
+        ],
+        "query": "research,needs_id,casual"
+      }
+    ]
+  },
+  "time": { "from": "now-10y", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Herpetofauna Dashboard",
+  "uid": "observa-herps-v1",
+  "version": 1
+}

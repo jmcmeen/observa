@@ -15,7 +15,9 @@ groups:
               to: 0
             datasourceUid: inaturalist
             model:
-              rawSql: "SELECT EXTRACT(EPOCH FROM now() - finished_at) / 3600 AS hours_since FROM import_log WHERE status = 'completed' ORDER BY id DESC LIMIT 1;"
+              # Includes 'skipped' so cache-skip runs (when upstream S3 is unchanged) count
+              # as healthy check-ins. Excludes 'failed' because the import-failed alert covers that.
+              rawSql: "SELECT EXTRACT(EPOCH FROM now() - finished_at) / 3600 AS hours_since FROM import_log WHERE status IN ('completed', 'skipped') ORDER BY id DESC LIMIT 1;"
               format: table
           - refId: C
             relativeTimeRange:
@@ -87,19 +89,28 @@ groups:
               to: 0
             datasourceUid: inaturalist
             model:
+              # Wraps the comparison in a scalar subquery with COALESCE so the alert always
+              # returns exactly one row containing pct_drop. Returns 0 (no drop) when there is
+              # no previous completed run to compare against, instead of NoData.
               rawSql: >
-                SELECT CASE
-                  WHEN prev.observations_count > 0
-                    THEN 100.0 * (prev.observations_count - curr.observations_count) / prev.observations_count
-                  ELSE 0
-                END AS pct_drop
-                FROM import_log curr
-                JOIN import_log prev ON prev.id = (
-                  SELECT id FROM import_log
-                  WHERE status = 'completed' AND id < curr.id
-                  ORDER BY id DESC LIMIT 1
-                )
-                WHERE curr.id = (SELECT id FROM import_log WHERE status = 'completed' ORDER BY id DESC LIMIT 1);
+                SELECT COALESCE((
+                  SELECT
+                    CASE
+                      WHEN prev.observations_count > 0
+                        THEN 100.0 * (prev.observations_count - curr.observations_count) / prev.observations_count
+                      ELSE 0
+                    END
+                  FROM (
+                    SELECT id, observations_count FROM import_log
+                    WHERE status = 'completed'
+                    ORDER BY id DESC LIMIT 1
+                  ) curr
+                  LEFT JOIN LATERAL (
+                    SELECT observations_count FROM import_log
+                    WHERE status = 'completed' AND id < curr.id
+                    ORDER BY id DESC LIMIT 1
+                  ) prev ON true
+                ), 0) AS pct_drop;
               format: table
           - refId: C
             relativeTimeRange:

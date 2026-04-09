@@ -2,6 +2,8 @@
 
 This document describes the tables, columns, relationships, and materialized views in the Observa database. Understanding this model is essential for writing useful queries and CSV exports.
 
+> **Need a terse machine-readable reference?** See [schema-definition.md](schema-definition.md) — it has the same tables in compact tabular form, plus RPC function signatures, a useful iNaturalist taxon ID lookup, a gotchas section, and Grafana macro reference. It's designed to be loaded as context by LLM coding assistants when writing SQL.
+
 ## Entity relationship
 
 ```
@@ -80,16 +82,19 @@ Taxonomic information for every organism identified on iNaturalist.
 
 #### Using ancestry for taxonomic filtering
 
-The `ancestry` column encodes the full path from kingdom to parent. To find all observations of birds (Aves, taxon_id 3):
+The `ancestry` column encodes the full path from kingdom to parent as a slash-separated list (e.g. `48460/1/3` for a direct child of Aves). To find all observations of birds (Aves, taxon_id 3) **including direct children whose ancestry ends in `/3`**, use the wrapped-delimiter pattern:
 
 ```sql
 SELECT o.*
 FROM observations o
 JOIN taxa t ON o.taxon_id = t.taxon_id
-WHERE t.ancestry LIKE '%/3/%' OR t.taxon_id = 3;
+WHERE ('/' || COALESCE(t.ancestry, '') || '/') LIKE '%/3/%'
+   OR t.taxon_id = 3;
 ```
 
 This matches any taxon that has Aves (3) anywhere in its ancestry chain — species, genera, families, and orders within birds.
+
+> **Why the wrapping?** The naive pattern `t.ancestry LIKE '%/3/%'` misses direct children of Aves whose ancestry string ends with `/3` (no trailing slash). Wrapping both ends with `/` before matching ensures every position is checked. Always use the wrapped form when the target taxon may have direct child taxa.
 
 ### photos
 

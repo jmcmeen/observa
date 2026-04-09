@@ -231,11 +231,18 @@ START_TIME=$(date +%s)
 
 download_files
 
-# Skip import if no files changed and last import was successful
+# Skip import if no files changed and last real run was successful.
+# Filter out prior 'skipped' rows so consecutive skips don't trigger a re-import.
 if [ "$FILES_CHANGED" -eq 0 ]; then
-    LAST_STATUS=$(psql -qtAX -c "SELECT status FROM import_log ORDER BY id DESC LIMIT 1;" 2>/dev/null || echo "")
+    LAST_STATUS=$(psql -qtAX -c "SELECT status FROM import_log WHERE status IN ('completed', 'failed') ORDER BY id DESC LIMIT 1;" 2>/dev/null || echo "")
     if [ "$LAST_STATUS" = "completed" ]; then
         log "No new data and last import succeeded. Skipping."
+        # Record the skip so the import-stale alert can distinguish
+        # "cron ran and there was nothing to do" from "cron is broken".
+        psql -qtAX -c "
+            INSERT INTO import_log (started_at, finished_at, status, duration_seconds)
+            VALUES (now(), now(), 'skipped', 0);
+        " >/dev/null 2>&1 || true
         exit 0
     fi
     log "No new data but last import was not successful. Re-importing."

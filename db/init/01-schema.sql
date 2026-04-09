@@ -90,22 +90,44 @@ CREATE TABLE import_stats (
 -- Allow the main user to query database size in Grafana
 GRANT pg_read_all_stats TO CURRENT_USER;
 
--- Health endpoint for external uptime monitors (exposed via PostgREST)
+-- Health endpoint for external uptime monitors (exposed via PostgREST).
+--
+-- last_import_status / last_import_at / hours_since_import answer
+-- "is the cron job running?" — they reflect the most recent terminal run of any
+-- kind (completed, skipped, or failed). A 'skipped' status with a recent
+-- timestamp means the importer ran on schedule and found the upstream S3 data
+-- unchanged, which is healthy.
+--
+-- observations_count / photos_count / taxa_count / observers_count answer
+-- "how much data is loaded?" — they always reflect the most recent successful
+-- 'completed' import, since 'skipped' rows have no counts.
 CREATE OR REPLACE VIEW v_health AS
+WITH last_run AS (
+    SELECT id, status, finished_at, duration_seconds, error_message
+    FROM import_log
+    WHERE status IN ('completed', 'skipped', 'failed')
+    ORDER BY id DESC
+    LIMIT 1
+),
+last_completed AS (
+    SELECT observations_count, photos_count, taxa_count, observers_count
+    FROM import_log
+    WHERE status = 'completed'
+    ORDER BY id DESC
+    LIMIT 1
+)
 SELECT
-    il.status AS last_import_status,
-    il.finished_at AS last_import_at,
-    round(EXTRACT(EPOCH FROM now() - il.finished_at) / 3600, 1) AS hours_since_import,
-    il.observations_count,
-    il.photos_count,
-    il.taxa_count,
-    il.observers_count,
-    il.duration_seconds AS last_import_duration_seconds,
-    il.error_message AS last_error
-FROM import_log il
-WHERE il.status IN ('completed', 'failed')
-ORDER BY il.id DESC
-LIMIT 1;
+    lr.status AS last_import_status,
+    lr.finished_at AS last_import_at,
+    round(EXTRACT(EPOCH FROM now() - lr.finished_at) / 3600, 1) AS hours_since_import,
+    lc.observations_count,
+    lc.photos_count,
+    lc.taxa_count,
+    lc.observers_count,
+    lr.duration_seconds AS last_import_duration_seconds,
+    lr.error_message AS last_error
+FROM last_run lr
+LEFT JOIN last_completed lc ON true;
 
 -- Read-only role for API access
 DO $$

@@ -1,0 +1,38 @@
+cff-version: 1.2.0
+message: "If you use Observa in your research, please cite it as below."
+title: "Observa: A Dockerized platform for hosting and exploring the iNaturalist Open Dataset"
+abstract: >-
+  Observa is a self-hostable platform that ingests the iNaturalist Open Dataset
+  from the AWS Open Data Registry into a PostGIS-enabled PostgreSQL database,
+  with automated daily imports, pre-provisioned Grafana dashboards for ecology
+  and biodiversity exploration, and a PostgREST-backed REST API for programmatic
+  access.
+type: software
+authors:
+  - family-names: McMeen
+    given-names: John
+    website: "https://github.com/jmcmeen"
+repository-code: "https://github.com/jmcmeen/observa"
+url: "https://github.com/jmcmeen/observa"
+license: Apache-2.0
+keywords:
+  - biodiversity
+  - ecology
+  - inaturalist
+  - postgis
+  - grafana
+  - citizen-science
+  - open-data
+  - herpetology
+  - bioamla
+date-released: 2026-03-28
+references:
+  - type: data
+    title: "iNaturalist Open Dataset"
+    authors:
+      - name: "iNaturalist"
+    url: "https://github.com/inaturalist/inaturalist-open-data"
+    notes: >-
+      Observa ingests the iNaturalist Open Dataset, distributed under
+      CC0/CC-BY/CC-BY-NC licenses via the AWS Open Data Registry.
+      Users of Observa-derived data should also cite the underlying dataset.
