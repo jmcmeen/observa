@@ -2,7 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
-## v0.2.1 — 2026-04-09
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.2.1] - 2026-04-09
 
 ### Features
 
@@ -29,7 +34,7 @@ All notable changes to this project will be documented in this file.
 
 - **Citation File Format manifest** — Added [CITATION.cff](CITATION.cff) (CFF 1.2.0) so GitHub's "Cite this repository" button and Zenodo can produce structured citations on release. Includes a `references` block pointing at the underlying iNaturalist Open Dataset so downstream users know to cite both Observa and the source data.
 
-## v0.2.0 — 2026-03-28
+## [0.2.0] - 2026-03-28
 
 ### Security
 
@@ -80,7 +85,7 @@ All notable changes to this project will be documented in this file.
 - **Incremental materialized view refresh** — deferred until refresh times become a bottleneck at 500M+ rows.
 - **Endangered species monitoring** — deferred; requires sourcing external IUCN Red List data.
 
-## v0.1.4 — 2026-03-19
+## [0.1.4] - 2026-03-19
 
 ### Bug Fixes
 
@@ -103,13 +108,13 @@ All notable changes to this project will be documented in this file.
 - Added data model reference, troubleshooting guide, and custom dashboards guide to `docs/`.
 - Updated CSV export guide and README with new dashboard descriptions.
 
-## v0.1.3 — 2026-03-19
+## [0.1.3] - 2026-03-19
 
 ### Bug Fixes
 
 - **Race condition in stale lock recovery** — After removing a stale lock, `mkdir` was not checked for failure, allowing two imports to run concurrently if another process grabbed the lock in between. Now aborts if re-acquisition fails.
 
-## v0.1.2 — 2026-03-19
+## [0.1.2] - 2026-03-19
 
 ### Bug Fixes
 
@@ -122,7 +127,7 @@ All notable changes to this project will be documented in this file.
 
 - **`v_health` view filtered to finished imports** — Added `WHERE status IN ('completed', 'failed')` so the health endpoint only reports on completed or failed imports, not in-progress ones.
 
-## v0.1.1 — 2026-03-19
+## [0.1.1] - 2026-03-19
 
 ### Bug Fixes
 
@@ -144,7 +149,7 @@ All notable changes to this project will be documented in this file.
 - Added development guide covering: manual imports, test data seeding, alert SQL testing, and log viewing.
 - Added filtered data export examples using PostgREST with `Accept: text/csv`.
 
-## v0.1.0 — 2026-03-15
+## [0.1.0] - 2026-03-15
 
 Initial release of Observa, a Dockerized platform for hosting and exploring iNaturalist Open Data.
 
@@ -185,3 +190,12 @@ Initial release of Observa, a Dockerized platform for hosting and exploring iNat
 - Dashboard JSON uses explicit datasource UIDs matching `postgres.yml`.
 - `import.sh` refactored into named functions (`download_files`, `validate_files`, `load_staging`, `swap_tables`, `refresh_views`).
 - Alerting contact points provisioned via `contact-points.yml` with environment variable support.
+
+[Unreleased]: https://github.com/jmcmeen/observa/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/jmcmeen/observa/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/jmcmeen/observa/compare/v0.1.4...v0.2.0
+[0.1.4]: https://github.com/jmcmeen/observa/compare/v0.1.3...v0.1.4
+[0.1.3]: https://github.com/jmcmeen/observa/compare/v0.1.2...v0.1.3
+[0.1.2]: https://github.com/jmcmeen/observa/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/jmcmeen/observa/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/jmcmeen/observa/releases/tag/v0.1.0

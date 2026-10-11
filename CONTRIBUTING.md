@@ -115,7 +115,7 @@ If you're writing SQL against the database, [docs/schema-definition.md](docs/sch
 5. For any query that filters by taxonomic group, use the wrapped-delimiter ancestry pattern documented in [docs/schema-definition.md](docs/schema-definition.md#canonical-idioms) — do not use the naive `LIKE '%/X/%'` form, which misses direct child taxa.
 6. Validate the JSON: `python3 -c "import json; json.load(open('grafana/provisioning/dashboards/yourname.json'))"`.
 7. Restart Grafana to load it: `docker restart observa-grafana-1`.
-8. Add a one-line entry to the dashboard list in [README.md](README.md) and a CHANGELOG entry under the next version's `### Features`.
+8. Add a one-line entry to the dashboard list in [README.md](README.md) and a CHANGELOG entry under `## [Unreleased]` → `### Features`.
 
 ### Adding a new docs page
 
@@ -175,7 +175,7 @@ docker exec observa-importer-1 /import.sh
 - Keep commits focused — one logical change per commit when possible.
 - Commit messages should be descriptive but don't need to follow Conventional Commits or any other strict format.
 - PRs are squash-merged into `main`. Write a clear PR description summarizing the change and the motivation.
-- If your change is user-visible, add a CHANGELOG entry under the next version's appropriate section (`### Features`, `### Bug Fixes`, `### Documentation`, etc.). Match the style of existing entries — short bold title, em-dash, prose explanation.
+- If your change is user-visible, add a CHANGELOG entry under `## [Unreleased]`, in the appropriate section (`### Features`, `### Bug Fixes`, `### Documentation`, etc.). Match the style of existing entries — short bold title, em-dash, prose explanation.
 - Reference any related issues with `Fixes #N` or `Closes #N` in the PR description.
 
 ## What gets reviewed
