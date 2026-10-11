@@ -22,7 +22,7 @@ services:
       retries: 5
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:13.2.3
     restart: unless-stopped
     environment:
       GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER:-admin}
@@ -35,7 +35,7 @@ services:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
     ports:
-      - "3000:3000"
+      - "${GRAFANA_BIND:-127.0.0.1}:3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -64,7 +64,7 @@ services:
         condition: service_healthy
 
   postgrest:
-    image: postgrest/postgrest
+    image: postgrest/postgrest:v16.4
     restart: unless-stopped
     environment:
       PGRST_DB_URI: postgres://api_user:${API_USER_PASSWORD:?Set API_USER_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-inaturalist}

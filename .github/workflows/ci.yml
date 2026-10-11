@@ -53,3 +53,29 @@ jobs:
         run: pip install yamllint
       - name: Lint YAML files
         run: yamllint -d relaxed docker-compose.yml grafana/provisioning/
+
+  smoke-test:
+    name: Smoke test (seeded stack + API)
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_PASSWORD: ci-test
+      API_USER_PASSWORD: ci-test
+      GF_SECURITY_ADMIN_PASSWORD: ci-test
+      # Feb 31 never comes: the importer must not download iNaturalist in CI.
+      IMPORT_CRON: "0 3 31 2 *"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start services
+        run: docker compose up -d --build --wait --wait-timeout 300 postgres importer postgrest nginx
+
+      - name: Seed test data and run API smoke tests
+        run: ./scripts/test-local.sh
+
+      - name: Service logs
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Stop services
+        if: always()
+        run: docker compose down -v

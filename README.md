@@ -96,7 +96,7 @@ See comments in `db/postgresql.conf` for details on worst-case memory usage unde
 | Service | Port | Description |
 |---|---|---|
 | `postgres` | 5432 | PostGIS 16 database with iNaturalist data |
-| `grafana` | 3000 | Dashboard UI with alerting |
+| `grafana` | 3000 | Dashboard UI with alerting (localhost only unless `GRAFANA_BIND` is set) |
 | `importer` | — | Cron-based ETL container (no exposed ports) |
 | `nginx` | 3001 | Reverse proxy with rate limiting and access logging |
 | `postgrest` | — | Read-only REST API over the database (internal, behind nginx) |
