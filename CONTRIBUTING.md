@@ -34,9 +34,14 @@ Good first issues are tagged `good first issue` on GitHub. Dashboard contributio
 
 ### First-time setup
 
+Only the maintainer can push to this repository, so contributions come in as pull
+requests from a fork. Fork [jmcmeen/observa](https://github.com/jmcmeen/observa) on
+GitHub, then clone your fork:
+
 ```bash
-git clone https://github.com/jmcmeen/observa.git
+git clone https://github.com/YOUR-USERNAME/observa.git   # your fork
 cd observa
+git remote add upstream https://github.com/jmcmeen/observa.git
 cp .env.example .env
 # Edit .env and set strong passwords for POSTGRES_PASSWORD,
 # API_USER_PASSWORD, and GF_SECURITY_ADMIN_PASSWORD
@@ -172,6 +177,9 @@ docker exec observa-importer-1 /import.sh
 
 ## Commit messages and PRs
 
+- Work on a branch in your fork, made from an up-to-date `upstream/main`
+  (`git fetch upstream && git switch -c fix/short-description --no-track upstream/main`).
+  Push it to your fork and open a PR against `main` here; the maintainer reviews and merges it.
 - Keep commits focused — one logical change per commit when possible.
 - Commit messages should be descriptive but don't need to follow Conventional Commits or any other strict format.
 - PRs are squash-merged into `main`. Write a clear PR description summarizing the change and the motivation.
