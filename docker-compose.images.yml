@@ -1,22 +1,136 @@
-# Optional: run the published importer and backup images instead of building
-# them from source. Use it on top of the main file:
+# Self-contained deployment from the published images. It needs no checkout of
+# this repository: this file and a .env are enough.
 #
-#   docker compose -f docker-compose.yml -f docker-compose.images.yml up -d
+#   curl -O https://raw.githubusercontent.com/jmcmeen/observa/main/docker-compose.images.yml
+#   curl -o .env https://raw.githubusercontent.com/jmcmeen/observa/main/.env.example
+#   (edit .env, then)
+#   docker compose -f docker-compose.images.yml up -d
 #
-# or set COMPOSE_FILE=docker-compose.yml:docker-compose.images.yml in .env.
-# Needs Docker Compose 2.24 or later (for `!reset`).
+# The schema, server settings, dashboards, alert rules and proxy configuration
+# are inside the images, so a release is one tag: OBSERVA_VERSION picks it (a
+# release such as 0.2.7, a minor line such as 0.2, or latest, the default).
+# Compose reuses an image it already has, so a moving tag (latest, 0.2) needs
+# `docker compose -f docker-compose.images.yml pull` before `up -d`.
 #
-# OBSERVA_VERSION picks the tag: a release (0.2.7), a minor line (0.2), or
-# latest (the default). Only these two images are published; the others come
-# from upstream, and the mounted config still comes from this repository.
-#
-# Compose reuses an image it already has, so a moving tag (latest, 0.2) does not
-# refresh on `up -d`. Run `docker compose pull` first when updating (see the
-# README's Updating section).
+# Keep this file in step with docker-compose.yml, which builds the same services
+# from source and mounts their configuration from the checkout. CI starts this
+# file against images built from the checkout, so a mismatch fails there.
+name: observa
+
 services:
+  postgres:
+    image: ${OBSERVA_REGISTRY:-ghcr.io/jmcmeen}/observa-postgres:${OBSERVA_VERSION:-latest}
+    restart: unless-stopped
+    # The four memory settings can be overridden from .env; the defaults match
+    # the postgresql.conf inside the image.
+    command: >
+      postgres
+        -c config_file=/etc/postgresql/postgresql.conf
+        -c shared_buffers=${PG_SHARED_BUFFERS:-4GB}
+        -c effective_cache_size=${PG_EFFECTIVE_CACHE_SIZE:-12GB}
+        -c work_mem=${PG_WORK_MEM:-256MB}
+        -c maintenance_work_mem=${PG_MAINTENANCE_WORK_MEM:-2GB}
+    shm_size: 2g
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-observa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-inaturalist}
+      API_USER_PASSWORD: ${API_USER_PASSWORD:?Set API_USER_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-observa} -d ${POSTGRES_DB:-inaturalist}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  grafana:
+    image: ${OBSERVA_REGISTRY:-ghcr.io/jmcmeen}/observa-grafana:${OBSERVA_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:?Set GF_SECURITY_ADMIN_PASSWORD in .env}
+      POSTGRES_USER: ${POSTGRES_USER:-observa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-inaturalist}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000/}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "${GRAFANA_BIND:-127.0.0.1}:3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   importer:
-    image: ghcr.io/jmcmeen/observa-importer:${OBSERVA_VERSION:-latest}
-    build: !reset null
+    image: ${OBSERVA_REGISTRY:-ghcr.io/jmcmeen}/observa-importer:${OBSERVA_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-observa}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      PGDATABASE: ${POSTGRES_DB:-inaturalist}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:?Set GF_SECURITY_ADMIN_PASSWORD in .env}
+      IMPORT_CRON: ${IMPORT_CRON:-0 3 * * *}
+      ROW_DROP_THRESHOLD: ${ROW_DROP_THRESHOLD:-50}
+    volumes:
+      - import_cache:/cache
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep crond"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgrest:
+    image: postgrest/postgrest:v16.4
+    restart: unless-stopped
+    environment:
+      PGRST_DB_URI: postgres://api_user:${API_USER_PASSWORD:?Set API_USER_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-inaturalist}
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: api_readonly
+      PGRST_OPENAPI_SERVER_PROXY_URI: ${API_PUBLIC_URL:-http://localhost:3001}
+    expose:
+      - "3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  nginx:
+    image: ${OBSERVA_REGISTRY:-ghcr.io/jmcmeen}/observa-nginx:${OBSERVA_VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      - "${API_BIND:-127.0.0.1}:3001:3001"
+    depends_on:
+      - postgrest
+
   backup:
-    image: ghcr.io/jmcmeen/observa-backup:${OBSERVA_VERSION:-latest}
-    build: !reset null
+    image: ${OBSERVA_REGISTRY:-ghcr.io/jmcmeen}/observa-backup:${OBSERVA_VERSION:-latest}
+    restart: unless-stopped
+    # BACKUP_REPLICAS=0 leaves the container out entirely.
+    deploy:
+      replicas: ${BACKUP_REPLICAS:-1}
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-observa}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      PGDATABASE: ${POSTGRES_DB:-inaturalist}
+      BACKUP_RETENTION: ${BACKUP_RETENTION:-4}
+      BACKUP_CRON: ${BACKUP_CRON:-0 2 * * 0}
+      BACKUP_ENABLED: ${BACKUP_ENABLED:-true}
+    volumes:
+      - backup_data:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  grafana_data:
+  backup_data:
+  import_cache:
