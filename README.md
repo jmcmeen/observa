@@ -124,7 +124,7 @@ ghcr.io/jmcmeen/observa-backup:<tag>
 docker compose -f docker-compose.yml -f docker-compose.images.yml up -d
 ```
 
-Or set `COMPOSE_FILE=docker-compose.yml:docker-compose.images.yml` in `.env`, and `OBSERVA_VERSION` to pick a tag (default `latest`). The other services already use upstream images. The settings in `.env` work the same either way, because they are applied when the container starts and are not part of an image. The config files mounted from this repository (`db/`, `grafana/`, `nginx/`) still come from your checkout, so keep it at the same release as the images.
+The overlay needs Docker Compose 2.24 or later. Or set `COMPOSE_FILE=docker-compose.yml:docker-compose.images.yml` in `.env`, and `OBSERVA_VERSION` to pick a tag (default `latest`). Compose reuses an image it already has, so a moving tag (`latest`, `0.2`) doesn't refresh on `up -d`: run `docker compose pull` first, as in [Updating](#updating). The other services already use upstream images. The settings in `.env` work the same either way, because they are applied when the container starts and are not part of an image. The config files mounted from this repository (`db/`, `grafana/`, `nginx/`) still come from your checkout, so keep it at the same release as the images.
 
 ## Daily Imports
 
