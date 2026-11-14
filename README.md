@@ -31,11 +31,23 @@ A Dockerized platform for hosting and exploring [iNaturalist Open Data](https://
 
 2. **Start the services**
 
+   Both options use the same `.env`. Pick one.
+
+   **Build from source** (the default). The first run builds the importer and backup images:
+
    ```bash
    docker compose up -d
    ```
 
-   This starts PostgreSQL (with PostGIS), Grafana, the importer, and PostgREST. The first run builds the importer and backup images from source. To pull the published images instead, see [Published images](#published-images).
+   **Or pull the published images** instead of building them (needs Docker Compose 2.24 or later):
+
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.images.yml up -d
+   ```
+
+   Each release publishes `ghcr.io/jmcmeen/observa-importer` and `ghcr.io/jmcmeen/observa-backup` for amd64 and arm64. `OBSERVA_VERSION` in `.env` picks the tag: a release (`0.2.7`), a minor line that follows its newest patch (`0.2`), or `latest` (the default). To always use the images, set `COMPOSE_FILE=docker-compose.yml:docker-compose.images.yml` in `.env`. The config files mounted from this repository (`db/`, `grafana/`, `nginx/`) still come from your checkout, so keep it at the same release as the images.
+
+   Either way this starts PostgreSQL (with PostGIS), Grafana, the importer, and PostgREST.
 
 3. **Run the initial import**
 
@@ -110,22 +122,26 @@ See comments in `db/postgresql.conf` for details on worst-case memory usage unde
 | `postgrest` | — | Read-only REST API over the database (internal, behind nginx) |
 | `backup` | — | Scheduled database backup (weekly by default; `BACKUP_REPLICAS=0` leaves it out) |
 
-## Published images
+## Updating
 
-Each release publishes the `importer` and `backup` images to GitHub Container Registry, for amd64 and arm64:
+Check out the release you want, then apply it. Your data lives in volumes, so it persists. Read the [CHANGELOG](CHANGELOG.md) first: [db/init/](db/init/) only runs on a database's first startup, so a schema change needs the steps it describes.
 
-```text
-ghcr.io/jmcmeen/observa-importer:<tag>
-ghcr.io/jmcmeen/observa-backup:<tag>
-```
-
-`<tag>` is a release (`0.2.7`), a minor line that follows its newest patch (`0.2`), or `latest`. To run them instead of building from source, add the overlay file:
+If you build from source (the default):
 
 ```bash
+git pull
+docker compose up -d --build
+```
+
+If you run the published images, pull them first. Compose reuses an image it already has, so `up -d` alone doesn't refresh a moving tag (`latest`, `0.2`), and `--build` has nothing to do for images that come from the registry:
+
+```bash
+git pull
+docker compose -f docker-compose.yml -f docker-compose.images.yml pull importer backup
 docker compose -f docker-compose.yml -f docker-compose.images.yml up -d
 ```
 
-The overlay needs Docker Compose 2.24 or later. Or set `COMPOSE_FILE=docker-compose.yml:docker-compose.images.yml` in `.env`, and `OBSERVA_VERSION` to pick a tag (default `latest`). Compose reuses an image it already has, so a moving tag (`latest`, `0.2`) doesn't refresh on `up -d`: run `docker compose pull` first, as in [Updating](#updating). The other services already use upstream images. The settings in `.env` work the same either way, because they are applied when the container starts and are not part of an image. The config files mounted from this repository (`db/`, `grafana/`, `nginx/`) still come from your checkout, so keep it at the same release as the images.
+With `OBSERVA_VERSION=latest` (the default) the pull fetches the newest release. Pin a version or minor line to stay put. Keep the checkout and the images at the same release, because the mounted config (`db/`, `grafana/`, `nginx/`) comes from the checkout.
 
 ## Daily Imports
 
@@ -395,25 +411,6 @@ docker compose exec postgres psql -U observa -d inaturalist -c "
     AND b.id = (SELECT max(id) FROM import_log WHERE status = 'completed' AND id < a.id);
 "
 ```
-
-### Updating
-
-Check out the release you want, then apply it. Your data lives in volumes, so it persists. Read the [CHANGELOG](CHANGELOG.md) first: [db/init/](db/init/) only runs on a database's first startup, so a schema change needs the steps it describes.
-
-```bash
-git pull
-docker compose up -d --build   # building the importer and backup images from source (the default)
-```
-
-If you run the [published images](#published-images), pull them instead. The importer and backup images come from the registry, so `--build` has nothing to do for them:
-
-```bash
-git pull
-docker compose -f docker-compose.yml -f docker-compose.images.yml pull importer backup
-docker compose -f docker-compose.yml -f docker-compose.images.yml up -d
-```
-
-With `OBSERVA_VERSION=latest` (the default) the pull fetches the newest release. Pin a version or minor line to stay put. Keep the checkout and the images at the same release, because the mounted config (`db/`, `grafana/`, `nginx/`) comes from the checkout.
 
 ### Rebuilding a single service
 
