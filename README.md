@@ -72,22 +72,29 @@ All settings are in `.env` (see `.env.example` for defaults):
 | `GF_SECURITY_ADMIN_PASSWORD` | Grafana admin password | **(required)** |
 | `IMPORT_CRON` | Import schedule (cron expression) | `0 3 * * *` (daily 3 AM) |
 | `ROW_DROP_THRESHOLD` | Max allowed row count drop % before aborting import | `50` |
+| `GRAFANA_BIND` | Interface Grafana listens on | `127.0.0.1` |
+| `GRAFANA_ROOT_URL` | Public URL of Grafana (behind a proxy or hostname) | `http://localhost:3000/` |
+| `API_BIND` | Interface the REST API (nginx) listens on | `127.0.0.1` |
+| `API_PUBLIC_URL` | Public URL of the API, used in its OpenAPI document | `http://localhost:3001` |
+| `PG_SHARED_BUFFERS` | PostgreSQL `shared_buffers` | `4GB` |
+| `PG_EFFECTIVE_CACHE_SIZE` | PostgreSQL `effective_cache_size` | `12GB` |
+| `PG_WORK_MEM` | PostgreSQL `work_mem` | `256MB` |
+| `PG_MAINTENANCE_WORK_MEM` | PostgreSQL `maintenance_work_mem` | `2GB` |
+| `BACKUP_ENABLED` | `false` turns off scheduled backups | `true` |
 | `BACKUP_CRON` | Backup schedule (cron expression) | `0 2 * * 0` (weekly Sunday 2 AM) |
 | `BACKUP_RETENTION` | Number of database backups to keep | `4` |
 
 ### PostgreSQL tuning
 
-`db/postgresql.conf` is tuned for a host with **~16 GB RAM**. The most impactful settings are `shared_buffers` (4 GB) and `work_mem` (256 MB). On hosts with less RAM, create a `docker-compose.override.yml` to lower these values:
+`db/postgresql.conf` is tuned for a host with **~16 GB RAM**. The most impactful settings are `shared_buffers` (4 GB) and `work_mem` (256 MB). On hosts with less RAM, lower them in `.env`:
 
-```yaml
-services:
-  postgres:
-    command: >
-      postgres
-        -c config_file=/etc/postgresql/postgresql.conf
-        -c shared_buffers=1GB
-        -c work_mem=64MB
+```ini
+PG_SHARED_BUFFERS=1GB
+PG_EFFECTIVE_CACHE_SIZE=3GB
+PG_WORK_MEM=64MB
 ```
+
+`PG_MAINTENANCE_WORK_MEM` works the same way. Anything else in `db/postgresql.conf` is edited there.
 
 See comments in `db/postgresql.conf` for details on worst-case memory usage under parallel queries.
 
@@ -98,9 +105,9 @@ See comments in `db/postgresql.conf` for details on worst-case memory usage unde
 | `postgres` | 5432 | PostGIS 16 database with iNaturalist data |
 | `grafana` | 3000 | Dashboard UI with alerting (localhost only unless `GRAFANA_BIND` is set) |
 | `importer` | — | Cron-based ETL container (no exposed ports) |
-| `nginx` | 3001 | Reverse proxy with rate limiting and access logging |
+| `nginx` | 3001 | Reverse proxy with rate limiting and access logging (localhost only unless `API_BIND` is set) |
 | `postgrest` | — | Read-only REST API over the database (internal, behind nginx) |
-| `backup` | — | Scheduled database backup (weekly by default) |
+| `backup` | — | Scheduled database backup (weekly by default; `BACKUP_ENABLED=false` turns it off) |
 
 ## Daily Imports
 
@@ -248,7 +255,7 @@ To enable JWT authentication:
 
 ## Database Backup
 
-Backups run automatically on the schedule defined by `BACKUP_CRON` (default: weekly Sunday 2 AM). To trigger an immediate backup:
+Backups run automatically on the schedule defined by `BACKUP_CRON` (default: weekly Sunday 2 AM). If the data can be re-imported and you don't need them, set `BACKUP_ENABLED=false` in `.env`: the container then idles, and you can still take one on demand. To trigger an immediate backup:
 
 ```bash
 docker compose exec backup /backup.sh

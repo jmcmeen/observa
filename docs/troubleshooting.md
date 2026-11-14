@@ -231,10 +231,10 @@ docker compose exec importer psql -f /scripts/create-materialized-views.sql
 
 ```bash
 # List available backups
-docker compose run --rm --profile backup --entrypoint ls backup /backups
+docker compose run --rm --entrypoint ls backup /backups
 
 # Restore (--clean drops existing objects first)
-docker compose run --rm --profile backup --entrypoint sh backup -c \
+docker compose run --rm --entrypoint sh backup -c \
   "pg_restore -h postgres -U observa -d inaturalist --clean /backups/observa_20260315_030000.dump"
 
 # Refresh materialized views after restore
@@ -246,7 +246,7 @@ docker compose exec importer psql -f /scripts/create-materialized-views.sql
 Test a backup without actually restoring it:
 
 ```bash
-docker compose run --rm --profile backup --entrypoint sh backup -c \
+docker compose run --rm --entrypoint sh backup -c \
   "pg_restore --list /backups/observa_20260315_030000.dump > /dev/null && echo 'Backup is valid'"
 ```
 
@@ -257,7 +257,7 @@ Backups use PostgreSQL custom format (`-Fc`), which is already compressed. Typic
 - Reduce `BACKUP_RETENTION` in `.env` (default is 4)
 - Delete old backups manually:
   ```bash
-  docker compose run --rm --profile backup --entrypoint sh backup -c \
+  docker compose run --rm --entrypoint sh backup -c \
     "ls -lh /backups/ && rm /backups/observa_20260301_030000.dump"
   ```
 
