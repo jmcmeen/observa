@@ -109,6 +109,23 @@ See comments in `db/postgresql.conf` for details on worst-case memory usage unde
 | `postgrest` | — | Read-only REST API over the database (internal, behind nginx) |
 | `backup` | — | Scheduled database backup (weekly by default; `BACKUP_ENABLED=false` turns it off) |
 
+## Published images
+
+Each release publishes the `importer` and `backup` images to GitHub Container Registry, for amd64 and arm64:
+
+```text
+ghcr.io/jmcmeen/observa-importer:<tag>
+ghcr.io/jmcmeen/observa-backup:<tag>
+```
+
+`<tag>` is a release (`0.2.7`), a minor line that follows its newest patch (`0.2`), or `latest`. To run them instead of building from source, add the overlay file:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.images.yml up -d
+```
+
+Or set `COMPOSE_FILE=docker-compose.yml:docker-compose.images.yml` in `.env`, and `OBSERVA_VERSION` to pick a tag (default `latest`). The other services already use upstream images. The settings in `.env` work the same either way, because they are applied when the container starts and are not part of an image. The config files mounted from this repository (`db/`, `grafana/`, `nginx/`) still come from your checkout, so keep it at the same release as the images.
+
 ## Daily Imports
 
 The importer runs on the schedule defined by `IMPORT_CRON`. Each run uses a zero-downtime swap-table strategy:

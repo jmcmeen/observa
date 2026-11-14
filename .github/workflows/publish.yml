@@ -1,0 +1,98 @@
+name: Publish images
+
+# Builds the importer and backup images and pushes them to GitHub Container
+# Registry when a GitHub Release is published, or when release.yml starts it on
+# a new tag. It only runs on a vX.Y.Z tag on main:
+#   ghcr.io/jmcmeen/observa-importer:<version>
+#   ghcr.io/jmcmeen/observa-backup:<version>
+# Each gets the full version (0.2.7), its minor line (0.2) and, for the newest
+# release, latest. Both are built for amd64 and arm64.
+#
+# No secrets: it pushes with the workflow's GITHUB_TOKEN. A package GitHub
+# hasn't seen before starts out private. After the first publish, open each
+# package (github.com/jmcmeen?tab=packages), Package settings, and change its
+# visibility to public, or nobody can pull it without logging in.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # push to ghcr.io
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [importer, backup]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # all tags
+
+      - name: Require a release tag on main
+        run: |
+          # Run by hand on a branch, this would publish code that never went
+          # through main and its CI.
+          if [ "$GITHUB_REF_TYPE" != tag ] || ! [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Publish only runs on a vX.Y.Z tag, not $GITHUB_REF_TYPE '$GITHUB_REF_NAME'."
+            exit 1
+          fi
+          git fetch -q origin +refs/heads/main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$GITHUB_REF_NAME isn't on main; only release tags from main are published."
+            exit 1
+          fi
+
+      - name: Work out the image tags
+        id: tags
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: |
+          semver='^v[0-9]+\.[0-9]+\.[0-9]+$'
+          version=${GITHUB_REF_NAME#v}
+          minor=${version%.*}
+          name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/observa-$IMAGE
+          tags="$name:$version"
+          # Moving tags only follow the newest release, so re-running an old
+          # release never points latest (or its minor line) backwards.
+          newest() { git tag --list "$1" | grep -E "$semver" | sort -V | tail -1; }
+          [ "$(newest "v$minor.*")" = "$GITHUB_REF_NAME" ] && tags+=$'\n'"$name:$minor"
+          [ "$(newest 'v*')" = "$GITHUB_REF_NAME" ] && tags+=$'\n'"$name:latest"
+          {
+            echo 'tags<<EOF'
+            echo "$tags"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+          echo "$tags"
+
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: ./${{ matrix.image }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+            org.opencontainers.image.title=observa-${{ matrix.image }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
