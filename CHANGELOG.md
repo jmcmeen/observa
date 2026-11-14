@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.11] - 2026-11-14
+
 ### Changed
 
 - **One compose file.** `docker-compose.yml` now runs the published importer and backup images by default, so `docker compose up -d` is the whole install and there is no overlay to add. To build them from source, add `docker-compose.build.yml` (`docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build`, or `COMPOSE_FILE=docker-compose.yml:docker-compose.build.yml` in `.env`). `docker-compose.images.yml` is gone: if you listed it in `COMPOSE_FILE` or a deployment tool, remove it and keep only `docker-compose.yml`. A source build that relied on the old default now needs the build file.
@@ -237,7 +239,8 @@ Initial release of Observa, a Dockerized platform for hosting and exploring iNat
 - `import.sh` refactored into named functions (`download_files`, `validate_files`, `load_staging`, `swap_tables`, `refresh_views`).
 - Alerting contact points provisioned via `contact-points.yml` with environment variable support.
 
-[Unreleased]: https://github.com/jmcmeen/observa/compare/v0.2.9...HEAD
+[Unreleased]: https://github.com/jmcmeen/observa/compare/v0.2.11...HEAD
+[0.2.11]: https://github.com/jmcmeen/observa/compare/v0.2.10...v0.2.11
 [0.2.9]: https://github.com/jmcmeen/observa/compare/v0.2.8...v0.2.9
 [0.2.8]: https://github.com/jmcmeen/observa/compare/v0.2.7...v0.2.8
 [0.2.7]: https://github.com/jmcmeen/observa/compare/v0.2.6...v0.2.7
