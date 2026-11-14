@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.9] - 2026-11-14
+
 ### Changed
 
 - **Back to two published images.** The `observa-postgres`, `observa-grafana` and `observa-nginx` images added in 0.2.8 are no longer built or published, and `docker-compose.images.yml` is the overlay for the importer and backup images again: use it together with `docker-compose.yml`, as in 0.2.7. The importer and backup images are unchanged. The base images are no longer pinned by digest, and Dependabot checks GitHub Actions only. If you ran `docker-compose.images.yml` on its own with 0.2.8, go back to `docker compose -f docker-compose.yml -f docker-compose.images.yml up -d`.
@@ -228,7 +230,8 @@ Initial release of Observa, a Dockerized platform for hosting and exploring iNat
 - `import.sh` refactored into named functions (`download_files`, `validate_files`, `load_staging`, `swap_tables`, `refresh_views`).
 - Alerting contact points provisioned via `contact-points.yml` with environment variable support.
 
-[Unreleased]: https://github.com/jmcmeen/observa/compare/v0.2.8...HEAD
+[Unreleased]: https://github.com/jmcmeen/observa/compare/v0.2.9...HEAD
+[0.2.9]: https://github.com/jmcmeen/observa/compare/v0.2.8...v0.2.9
 [0.2.8]: https://github.com/jmcmeen/observa/compare/v0.2.7...v0.2.8
 [0.2.7]: https://github.com/jmcmeen/observa/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/jmcmeen/observa/compare/v0.2.5...v0.2.6
