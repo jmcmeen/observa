@@ -22,7 +22,7 @@ services:
       - ./db/init:/docker-entrypoint-initdb.d:ro
       - ./db/postgresql.conf:/etc/postgresql/postgresql.conf:ro
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-observa} -d ${POSTGRES_DB:-inaturalist}"]
       interval: 10s
@@ -44,13 +44,13 @@ services:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
     ports:
-      - "${GRAFANA_BIND:-127.0.0.1}:3000:3000"
+      - "${GRAFANA_BIND:-127.0.0.1}:${GRAFANA_PORT:-3000}:3000"
     depends_on:
       postgres:
         condition: service_healthy
 
   importer:
-    build: ./importer
+    image: ghcr.io/jmcmeen/observa-importer:${OBSERVA_VERSION:-latest}
     restart: unless-stopped
     environment:
       PGHOST: postgres
@@ -92,12 +92,12 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     ports:
-      - "${API_BIND:-127.0.0.1}:3001:3001"
+      - "${API_BIND:-127.0.0.1}:${API_PORT:-3001}:3001"
     depends_on:
       - postgrest
 
   backup:
-    build: ./backup
+    image: ghcr.io/jmcmeen/observa-backup:${OBSERVA_VERSION:-latest}
     restart: unless-stopped
     # BACKUP_REPLICAS=0 leaves the container out entirely (see the README).
     deploy:

@@ -155,7 +155,13 @@ For changes that require `ALTER TABLE` or migration logic, open an issue first t
 
 ### Modifying the importer
 
-`import.sh` is baked into the importer image (no bind-mount), so changes require a rebuild. Use the default `docker-compose.yml` for this: the [published-images overlay](README.md#quick-start) runs released images and would ignore your local changes.
+`import.sh` is baked into the importer image (no bind-mount), so changes require a rebuild. The default `docker-compose.yml` runs the published images and would ignore your local changes, so add `docker-compose.build.yml`, which builds the importer and backup from this checkout. Set it once in `.env`:
+
+```bash
+COMPOSE_FILE=docker-compose.yml:docker-compose.build.yml
+```
+
+Then rebuild:
 
 ```bash
 docker compose up -d --build importer

@@ -1,0 +1,11 @@
+# For development: build the importer and backup images from this checkout
+# instead of pulling the published ones. Use it on top of the main file:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+#
+# or set COMPOSE_FILE=docker-compose.yml:docker-compose.build.yml in .env.
+services:
+  importer:
+    build: ./importer
+  backup:
+    build: ./backup

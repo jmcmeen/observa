@@ -31,23 +31,13 @@ A Dockerized platform for hosting and exploring [iNaturalist Open Data](https://
 
 2. **Start the services**
 
-   Both options use the same `.env`. Pick one.
-
-   **Build from source** (the default). The first run builds the importer and backup images:
-
    ```bash
    docker compose up -d
    ```
 
-   **Or pull the published images** instead of building them (needs Docker Compose 2.24 or later):
+   This pulls the published importer and backup images (`ghcr.io/jmcmeen/observa-importer` and `ghcr.io/jmcmeen/observa-backup`, for amd64 and arm64). `OBSERVA_VERSION` in `.env` picks the tag: a release (`0.2.9`), a minor line that follows its newest patch (`0.2`), or `latest` (the default). The config files mounted from this repository (`db/`, `grafana/`, `nginx/`) come from your checkout, so keep it at the same release as the images. To build the images from source instead, see [Contributing](CONTRIBUTING.md#modifying-the-importer).
 
-   ```bash
-   docker compose -f docker-compose.yml -f docker-compose.images.yml up -d
-   ```
-
-   Each release publishes `ghcr.io/jmcmeen/observa-importer` and `ghcr.io/jmcmeen/observa-backup` for amd64 and arm64. `OBSERVA_VERSION` in `.env` picks the tag: a release (`0.2.7`), a minor line that follows its newest patch (`0.2`), or `latest` (the default). To always use the images, set `COMPOSE_FILE=docker-compose.yml:docker-compose.images.yml` in `.env`. The config files mounted from this repository (`db/`, `grafana/`, `nginx/`) still come from your checkout, so keep it at the same release as the images.
-
-   Either way this starts PostgreSQL (with PostGIS), Grafana, the importer, and PostgREST.
+   This starts PostgreSQL (with PostGIS), Grafana, the importer, and PostgREST.
 
 3. **Run the initial import**
 
@@ -122,23 +112,30 @@ See comments in `db/postgresql.conf` for details on worst-case memory usage unde
 | `postgrest` | — | Read-only REST API over the database (internal, behind nginx) |
 | `backup` | — | Scheduled database backup (weekly by default; `BACKUP_REPLICAS=0` leaves it out) |
 
+## Using Observa with other services
+
+Observa is a self-contained Compose project, so it can run next to other stacks on one host. Everything is named after the project (`observa` by default), so containers, volumes and networks don't clash. If a host port is already taken, set `GRAFANA_PORT`, `API_PORT` or `POSTGRES_PORT` in `.env`.
+
+To run it as part of your own stack, add it with `include` in your compose file (Docker Compose 2.20 or later):
+
+```yaml
+include:
+  - path: ../observa/docker-compose.yml
+    env_file: ../observa/.env
+```
+
+The services keep their names (`postgres`, `grafana`, `nginx`, ...), so they must not clash with services in your file. To let another stack reach the API or database without publishing a port, attach that stack to the `observa_default` network and use `nginx:3001` or `postgres:5432`.
+
 ## Updating
 
 Check out the release you want, then apply it. Your data lives in volumes, so it persists. Read the [CHANGELOG](CHANGELOG.md) first: [db/init/](db/init/) only runs on a database's first startup, so a schema change needs the steps it describes.
 
-If you build from source (the default):
+Compose reuses an image it already has, so `up -d` alone doesn't refresh a moving tag (`latest`, `0.2`). Pull first:
 
 ```bash
 git pull
-docker compose up -d --build
-```
-
-If you run the published images, pull them first. Compose reuses an image it already has, so `up -d` alone doesn't refresh a moving tag (`latest`, `0.2`), and `--build` has nothing to do for images that come from the registry:
-
-```bash
-git pull
-docker compose -f docker-compose.yml -f docker-compose.images.yml pull importer backup
-docker compose -f docker-compose.yml -f docker-compose.images.yml up -d
+docker compose pull importer backup
+docker compose up -d
 ```
 
 With `OBSERVA_VERSION=latest` (the default) the pull fetches the newest release. Pin a version or minor line to stay put. Keep the checkout and the images at the same release, because the mounted config (`db/`, `grafana/`, `nginx/`) comes from the checkout.
@@ -414,7 +411,7 @@ docker compose exec postgres psql -U observa -d inaturalist -c "
 
 ### Rebuilding a single service
 
-This builds from source, so it applies to a deployment that doesn't use the published images:
+This builds from source, so add the build file (`docker-compose.build.yml`, see Contributing) to your `COMPOSE_FILE` first:
 
 ```bash
 docker compose up -d --build importer   # rebuild and restart importer only
