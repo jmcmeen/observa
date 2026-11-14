@@ -12,11 +12,22 @@ A Dockerized platform for hosting and exploring [iNaturalist Open Data](https://
 
 ## Quick Start
 
-1. **Clone and configure**
+1. **Get the files and configure**
+
+   Either clone the repository, which builds the images from source:
 
    ```bash
    git clone https://github.com/jmcmeen/observa.git && cd observa
    cp .env.example .env
+   ```
+
+   Or run the published images, which carry their own configuration and need no clone. Download the compose file and the settings template:
+
+   ```bash
+   mkdir observa && cd observa
+   curl -O https://raw.githubusercontent.com/jmcmeen/observa/main/docker-compose.images.yml
+   curl -o .env https://raw.githubusercontent.com/jmcmeen/observa/main/.env.example
+   echo 'COMPOSE_FILE=docker-compose.images.yml' >> .env
    ```
 
    Edit `.env` to set your passwords:
@@ -35,7 +46,7 @@ A Dockerized platform for hosting and exploring [iNaturalist Open Data](https://
    docker compose up -d
    ```
 
-   This starts PostgreSQL (with PostGIS), Grafana, the importer, and PostgREST. The first run builds the importer and backup images from source. To pull the published images instead, see [Published images](#published-images).
+   This starts PostgreSQL (with PostGIS), Grafana, the importer, PostgREST and nginx. From a clone, the first run builds the images from source. With the published images it pulls them instead: `OBSERVA_VERSION` in `.env` picks the tag (a release such as `0.2.7`, a minor line such as `0.2`, or `latest`, the default). The images carry the schema, dashboards and proxy configuration, so nothing else from this repository is needed. Every later `docker compose` command in this README works the same either way.
 
 3. **Run the initial import**
 
@@ -80,7 +91,8 @@ All settings are in `.env` (see `.env.example` for defaults):
 | `PG_EFFECTIVE_CACHE_SIZE` | PostgreSQL `effective_cache_size` | `12GB` |
 | `PG_WORK_MEM` | PostgreSQL `work_mem` | `256MB` |
 | `PG_MAINTENANCE_WORK_MEM` | PostgreSQL `maintenance_work_mem` | `2GB` |
-| `BACKUP_ENABLED` | `false` turns off scheduled backups | `true` |
+| `BACKUP_REPLICAS` | `0` doesn't run the backup container at all (use `0` or `1`) | `1` |
+| `BACKUP_ENABLED` | `false` keeps the backup container but turns off its schedule | `true` |
 | `BACKUP_CRON` | Backup schedule (cron expression) | `0 2 * * 0` (weekly Sunday 2 AM) |
 | `BACKUP_RETENTION` | Number of database backups to keep | `4` |
 
@@ -107,24 +119,27 @@ See comments in `db/postgresql.conf` for details on worst-case memory usage unde
 | `importer` | — | Cron-based ETL container (no exposed ports) |
 | `nginx` | 3001 | Reverse proxy with rate limiting and access logging (localhost only unless `API_BIND` is set) |
 | `postgrest` | — | Read-only REST API over the database (internal, behind nginx) |
-| `backup` | — | Scheduled database backup (weekly by default; `BACKUP_ENABLED=false` turns it off) |
+| `backup` | — | Scheduled database backup (weekly by default; `BACKUP_REPLICAS=0` leaves it out) |
 
-## Published images
+## Updating
 
-Each release publishes the `importer` and `backup` images to GitHub Container Registry, for amd64 and arm64:
+Read the [CHANGELOG](CHANGELOG.md) first. Your data lives in volumes, so it persists, but [db/init/](db/init/) only runs on a database's first startup, so a schema change needs the steps the CHANGELOG describes.
 
-```text
-ghcr.io/jmcmeen/observa-importer:<tag>
-ghcr.io/jmcmeen/observa-backup:<tag>
-```
-
-`<tag>` is a release (`0.2.7`), a minor line that follows its newest patch (`0.2`), or `latest`. To run them instead of building from source, add the overlay file:
+**Published images:**
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.images.yml up -d
+docker compose pull
+docker compose up -d
 ```
 
-The overlay needs Docker Compose 2.24 or later. Or set `COMPOSE_FILE=docker-compose.yml:docker-compose.images.yml` in `.env`, and `OBSERVA_VERSION` to pick a tag (default `latest`). Compose reuses an image it already has, so a moving tag (`latest`, `0.2`) doesn't refresh on `up -d`: run `docker compose pull` first, as in [Updating](#updating). The other services already use upstream images. The settings in `.env` work the same either way, because they are applied when the container starts and are not part of an image. The config files mounted from this repository (`db/`, `grafana/`, `nginx/`) still come from your checkout, so keep it at the same release as the images.
+Compose reuses an image it already has, so `up -d` alone doesn't refresh a moving tag (`latest`, `0.2`): pull first. To move to a pinned release, change `OBSERVA_VERSION` in `.env`, then pull and `up -d`. A release that changes `docker-compose.images.yml` itself (a new setting or port) says so in the CHANGELOG. Download the file again from that release, for example `curl -O https://raw.githubusercontent.com/jmcmeen/observa/v0.2.7/docker-compose.images.yml`.
+
+**From a clone:**
+
+```bash
+git pull
+docker compose up -d --build
+```
 
 ## Daily Imports
 
@@ -272,22 +287,25 @@ To enable JWT authentication:
 
 ## Database Backup
 
-Backups run automatically on the schedule defined by `BACKUP_CRON` (default: weekly Sunday 2 AM). If the data can be re-imported and you don't need them, set `BACKUP_ENABLED=false` in `.env`: the container then idles, and you can still take one on demand. To trigger an immediate backup:
+Backups run automatically on the schedule defined by `BACKUP_CRON` (default: weekly Sunday 2 AM). If the data can be re-imported and you don't need them, set `BACKUP_REPLICAS=0` in `.env`: the backup container isn't started at all, and a container that is already running is removed the next time you run `docker compose up -d`. (`BACKUP_ENABLED=false` instead keeps the container and turns off only its schedule.) To trigger an immediate backup:
 
 ```bash
-docker compose exec backup /backup.sh
+docker compose exec backup /backup.sh                          # the container is running
+docker compose run --rm --entrypoint /backup.sh backup         # it isn't (BACKUP_REPLICAS=0)
 ```
 
 Backups are stored in the `backup_data` volume in PostgreSQL custom format. To restore, copy the dump from the volume and pipe it into `pg_restore`:
 
 ```bash
 # List available backups
-docker compose exec backup ls /backups
+docker compose run --rm --entrypoint ls backup /backups
 
 # Restore a specific backup
-docker compose exec backup \
-  pg_restore -h postgres -U observa -d inaturalist --clean /backups/observa_20260315_030000.dump
+docker compose run --rm --entrypoint pg_restore backup \
+  -h postgres -U observa -d inaturalist --clean /backups/observa_20260315_030000.dump
 ```
+
+These start a one-off container, so they work whether or not the backup container is running.
 
 ## Data Export
 
@@ -391,25 +409,6 @@ docker compose exec postgres psql -U observa -d inaturalist -c "
     AND b.id = (SELECT max(id) FROM import_log WHERE status = 'completed' AND id < a.id);
 "
 ```
-
-### Updating
-
-Check out the release you want, then apply it. Your data lives in volumes, so it persists. Read the [CHANGELOG](CHANGELOG.md) first: [db/init/](db/init/) only runs on a database's first startup, so a schema change needs the steps it describes.
-
-```bash
-git pull
-docker compose up -d --build   # building the importer and backup images from source (the default)
-```
-
-If you run the [published images](#published-images), pull them instead. The importer and backup images come from the registry, so `--build` has nothing to do for them:
-
-```bash
-git pull
-docker compose -f docker-compose.yml -f docker-compose.images.yml pull importer backup
-docker compose -f docker-compose.yml -f docker-compose.images.yml up -d
-```
-
-With `OBSERVA_VERSION=latest` (the default) the pull fetches the newest release. Pin a version or minor line to stay put. Keep the checkout and the images at the same release, because the mounted config (`db/`, `grafana/`, `nginx/`) comes from the checkout.
 
 ### Rebuilding a single service
 

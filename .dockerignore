@@ -1,0 +1,14 @@
+# The importer is built from the repository root (it bakes in db/scripts), so
+# keep everything else out of that context. Nothing here ever goes into an image.
+.git
+.github
+.env
+.env.*
+docs
+scripts
+backup
+grafana
+nginx
+db/init
+db/postgresql.conf
+*.md

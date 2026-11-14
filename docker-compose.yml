@@ -1,6 +1,8 @@
 services:
   postgres:
-    image: postgis/postgis:16-3.4
+    # Base image versions live in the Dockerfiles. The mounts below replace the
+    # configuration baked into the image, so edits to db/ take effect on restart.
+    build: ./db
     restart: unless-stopped
     # The four memory settings can be overridden from .env; the defaults match
     # db/postgresql.conf, so keep the two in step.
@@ -30,7 +32,7 @@ services:
       retries: 5
 
   grafana:
-    image: grafana/grafana:13.2.3
+    build: ./grafana
     restart: unless-stopped
     environment:
       GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER:-admin}
@@ -50,7 +52,9 @@ services:
         condition: service_healthy
 
   importer:
-    build: ./importer
+    build:
+      context: .
+      dockerfile: importer/Dockerfile
     restart: unless-stopped
     environment:
       PGHOST: postgres
@@ -87,7 +91,7 @@ services:
         condition: service_healthy
 
   nginx:
-    image: nginx:alpine
+    build: ./nginx
     restart: unless-stopped
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
@@ -99,6 +103,9 @@ services:
   backup:
     build: ./backup
     restart: unless-stopped
+    # BACKUP_REPLICAS=0 leaves the container out entirely (see the README).
+    deploy:
+      replicas: ${BACKUP_REPLICAS:-1}
     environment:
       PGHOST: postgres
       PGUSER: ${POSTGRES_USER:-observa}

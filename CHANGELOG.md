@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Features
+
+- **Self-contained images.** Each release now also publishes `observa-postgres` (with the schema and server settings), `observa-grafana` (with the dashboards, datasource and alert rules) and `observa-nginx` (with the proxy configuration) next to `observa-importer` and `observa-backup`, and the importer image carries the SQL and export scripts. `docker-compose.images.yml` is now a complete compose file for them that needs no checkout of this repository: download it and `.env.example`, set the passwords, and `docker compose up -d`. All images are built for amd64 and arm64 except `observa-postgres`, which is amd64 only because the PostGIS base image is.
+- **`docker-compose.images.yml` is no longer an overlay.** It replaces `docker-compose.yml` instead of adding to it, so run it on its own (`-f docker-compose.images.yml`, or `COMPOSE_FILE=docker-compose.images.yml` in `.env`). It was an overlay in 0.2.7 and 0.2.8, so anyone who combined it with `docker-compose.yml` should switch to the file alone.
+- The README's Quick Start covers both ways of installing, and Updating is its own section.
+- **`BACKUP_REPLICAS=0`** leaves the backup container out entirely, so a deployment that doesn't want backups doesn't run an idle container. A backup can still be taken on demand with `docker compose run --rm --entrypoint /backup.sh backup`. Default is 1, so nothing changes unless you set it. `BACKUP_ENABLED=false` still works and keeps the container with its schedule off.
+- **Only one backup runs at a time.** A backup takes a lock on the backup volume, so overlapping runs (another replica, or a manual run during a scheduled one) skip instead of overwriting or deleting each other's files.
+- The README's list and restore commands use a one-off `docker compose run`, so they work when the backup container isn't running.
+
+### Changed
+
+- The base compose file builds `postgres`, `grafana` and `nginx` from the Dockerfiles in `db/`, `grafana/` and `nginx/` instead of using the upstream images directly, so each base version is set in one place. The configuration mounts are unchanged and still override what the images carry. The importer image is built from the repository root, so it can include `db/scripts`.
+- Base images are pinned by tag and digest, and Dependabot checks them monthly. PostGIS gets its own PR and a new PostgreSQL major is never bumped automatically.
+
 ## [0.2.7] - 2026-11-14
 
 ### Features
