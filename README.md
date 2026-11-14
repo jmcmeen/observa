@@ -80,7 +80,8 @@ All settings are in `.env` (see `.env.example` for defaults):
 | `PG_EFFECTIVE_CACHE_SIZE` | PostgreSQL `effective_cache_size` | `12GB` |
 | `PG_WORK_MEM` | PostgreSQL `work_mem` | `256MB` |
 | `PG_MAINTENANCE_WORK_MEM` | PostgreSQL `maintenance_work_mem` | `2GB` |
-| `BACKUP_ENABLED` | `false` turns off scheduled backups | `true` |
+| `BACKUP_REPLICAS` | `0` doesn't run the backup container at all | `1` |
+| `BACKUP_ENABLED` | `false` keeps the backup container but turns off its schedule | `true` |
 | `BACKUP_CRON` | Backup schedule (cron expression) | `0 2 * * 0` (weekly Sunday 2 AM) |
 | `BACKUP_RETENTION` | Number of database backups to keep | `4` |
 
@@ -107,7 +108,7 @@ See comments in `db/postgresql.conf` for details on worst-case memory usage unde
 | `importer` | — | Cron-based ETL container (no exposed ports) |
 | `nginx` | 3001 | Reverse proxy with rate limiting and access logging (localhost only unless `API_BIND` is set) |
 | `postgrest` | — | Read-only REST API over the database (internal, behind nginx) |
-| `backup` | — | Scheduled database backup (weekly by default; `BACKUP_ENABLED=false` turns it off) |
+| `backup` | — | Scheduled database backup (weekly by default; `BACKUP_REPLICAS=0` leaves it out) |
 
 ## Published images
 
@@ -272,10 +273,11 @@ To enable JWT authentication:
 
 ## Database Backup
 
-Backups run automatically on the schedule defined by `BACKUP_CRON` (default: weekly Sunday 2 AM). If the data can be re-imported and you don't need them, set `BACKUP_ENABLED=false` in `.env`: the container then idles, and you can still take one on demand. To trigger an immediate backup:
+Backups run automatically on the schedule defined by `BACKUP_CRON` (default: weekly Sunday 2 AM). If the data can be re-imported and you don't need them, set `BACKUP_REPLICAS=0` in `.env`: the backup container isn't started at all, and a container that is already running is removed the next time you run `docker compose up -d`. (`BACKUP_ENABLED=false` instead keeps the container and turns off only its schedule.) To trigger an immediate backup:
 
 ```bash
-docker compose exec backup /backup.sh
+docker compose exec backup /backup.sh                          # the container is running
+docker compose run --rm --entrypoint /backup.sh backup         # it isn't (BACKUP_REPLICAS=0)
 ```
 
 Backups are stored in the `backup_data` volume in PostgreSQL custom format. To restore, copy the dump from the volume and pipe it into `pg_restore`:
