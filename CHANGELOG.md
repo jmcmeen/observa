@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-11-14
+
 ### Features
 
 - **Deployment settings in `.env`** — `API_BIND`, `GRAFANA_ROOT_URL`, `API_PUBLIC_URL` and `PG_SHARED_BUFFERS` / `PG_EFFECTIVE_CACHE_SIZE` / `PG_WORK_MEM` / `PG_MAINTENANCE_WORK_MEM` replace the need for a `docker-compose.override.yml` when binding to a specific interface, running behind a proxy, or tuning for a smaller host. Defaults are unchanged.
@@ -200,7 +202,8 @@ Initial release of Observa, a Dockerized platform for hosting and exploring iNat
 - `import.sh` refactored into named functions (`download_files`, `validate_files`, `load_staging`, `swap_tables`, `refresh_views`).
 - Alerting contact points provisioned via `contact-points.yml` with environment variable support.
 
-[Unreleased]: https://github.com/jmcmeen/observa/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/jmcmeen/observa/compare/v0.2.6...HEAD
+[0.2.6]: https://github.com/jmcmeen/observa/compare/v0.2.5...v0.2.6
 [0.2.1]: https://github.com/jmcmeen/observa/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/jmcmeen/observa/compare/v0.1.4...v0.2.0
 [0.1.4]: https://github.com/jmcmeen/observa/compare/v0.1.3...v0.1.4
