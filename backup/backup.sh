@@ -13,6 +13,15 @@ log() { echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] $*"; }
 
 log "=== Database backup started ==="
 
+# One backup at a time on the shared volume. A second run (another replica, or a
+# manual run during a scheduled one) skips instead of writing or deleting the
+# first run's files. The lock goes away with the process, so it is never stale.
+exec 9> "${BACKUP_DIR}/.backup.lock"
+if ! flock -n 9; then
+    log "Another backup is already running; not starting a second."
+    exit 0
+fi
+
 # Leftovers from an earlier interrupted run
 rm -f "${BACKUP_DIR}"/observa_*.dump.partial
 trap 'rm -f "$PARTIAL_FILE"' EXIT

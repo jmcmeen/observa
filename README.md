@@ -80,7 +80,7 @@ All settings are in `.env` (see `.env.example` for defaults):
 | `PG_EFFECTIVE_CACHE_SIZE` | PostgreSQL `effective_cache_size` | `12GB` |
 | `PG_WORK_MEM` | PostgreSQL `work_mem` | `256MB` |
 | `PG_MAINTENANCE_WORK_MEM` | PostgreSQL `maintenance_work_mem` | `2GB` |
-| `BACKUP_REPLICAS` | `0` doesn't run the backup container at all | `1` |
+| `BACKUP_REPLICAS` | `0` doesn't run the backup container at all (use `0` or `1`) | `1` |
 | `BACKUP_ENABLED` | `false` keeps the backup container but turns off its schedule | `true` |
 | `BACKUP_CRON` | Backup schedule (cron expression) | `0 2 * * 0` (weekly Sunday 2 AM) |
 | `BACKUP_RETENTION` | Number of database backups to keep | `4` |
@@ -284,12 +284,14 @@ Backups are stored in the `backup_data` volume in PostgreSQL custom format. To r
 
 ```bash
 # List available backups
-docker compose exec backup ls /backups
+docker compose run --rm --entrypoint ls backup /backups
 
 # Restore a specific backup
-docker compose exec backup \
-  pg_restore -h postgres -U observa -d inaturalist --clean /backups/observa_20260315_030000.dump
+docker compose run --rm --entrypoint pg_restore backup \
+  -h postgres -U observa -d inaturalist --clean /backups/observa_20260315_030000.dump
 ```
+
+These start a one-off container, so they work whether or not the backup container is running.
 
 ## Data Export
 

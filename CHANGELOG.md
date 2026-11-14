@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 
 - **`BACKUP_REPLICAS=0`** leaves the backup container out entirely, so a deployment that doesn't want backups doesn't run an idle container. A backup can still be taken on demand with `docker compose run --rm --entrypoint /backup.sh backup`. Default is 1, so nothing changes unless you set it. `BACKUP_ENABLED=false` still works and keeps the container with its schedule off.
+- **Only one backup runs at a time.** A backup takes a lock on the backup volume, so overlapping runs (another replica, or a manual run during a scheduled one) skip instead of overwriting or deleting each other's files.
+- The README's list and restore commands use a one-off `docker compose run`, so they work when the backup container isn't running.
 
 ## [0.2.7] - 2026-11-14
 
