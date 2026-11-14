@@ -5,13 +5,21 @@ BACKUP_DIR="/backups"
 RETENTION=${BACKUP_RETENTION:-4}
 TIMESTAMP=$(date -u '+%Y%m%d_%H%M%S')
 BACKUP_FILE="${BACKUP_DIR}/observa_${TIMESTAMP}.dump"
+# Dump to a temporary name and rename on success, so a dump cut short (container
+# stopped, disk full) never looks like a usable backup or counts toward retention.
+PARTIAL_FILE="${BACKUP_FILE}.partial"
 
 log() { echo "[$(date -u '+%Y-%m-%d %H:%M:%S UTC')] $*"; }
 
 log "=== Database backup started ==="
 
+# Leftovers from an earlier interrupted run
+rm -f "${BACKUP_DIR}"/observa_*.dump.partial
+trap 'rm -f "$PARTIAL_FILE"' EXIT
+
 # Create backup using custom format (compressed)
-pg_dump -Fc -f "$BACKUP_FILE"
+pg_dump -Fc -f "$PARTIAL_FILE"
+mv "$PARTIAL_FILE" "$BACKUP_FILE"
 
 FILESIZE=$(du -h "$BACKUP_FILE" | cut -f1)
 log "Backup created: ${BACKUP_FILE} (${FILESIZE})"
