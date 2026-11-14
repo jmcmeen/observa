@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-11-14
+
 ### Features
 
 - **Self-contained images.** Each release now also publishes `observa-postgres` (with the schema and server settings), `observa-grafana` (with the dashboards, datasource and alert rules) and `observa-nginx` (with the proxy configuration) next to `observa-importer` and `observa-backup`, and the importer image carries the SQL and export scripts. `docker-compose.images.yml` is now a complete compose file for them that needs no checkout of this repository: download it and `.env.example`, set the passwords, and `docker compose up -d`. All images are built for amd64 and arm64 except `observa-postgres`, which is amd64 only because the PostGIS base image is.
@@ -222,7 +224,8 @@ Initial release of Observa, a Dockerized platform for hosting and exploring iNat
 - `import.sh` refactored into named functions (`download_files`, `validate_files`, `load_staging`, `swap_tables`, `refresh_views`).
 - Alerting contact points provisioned via `contact-points.yml` with environment variable support.
 
-[Unreleased]: https://github.com/jmcmeen/observa/compare/v0.2.7...HEAD
+[Unreleased]: https://github.com/jmcmeen/observa/compare/v0.2.8...HEAD
+[0.2.8]: https://github.com/jmcmeen/observa/compare/v0.2.7...v0.2.8
 [0.2.7]: https://github.com/jmcmeen/observa/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/jmcmeen/observa/compare/v0.2.5...v0.2.6
 [0.2.1]: https://github.com/jmcmeen/observa/compare/v0.2.0...v0.2.1
