@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **One compose file.** `docker-compose.yml` now runs the published importer and backup images by default, so `docker compose up -d` is the whole install and there is no overlay to add. To build them from source, add `docker-compose.build.yml` (`docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build`, or `COMPOSE_FILE=docker-compose.yml:docker-compose.build.yml` in `.env`). `docker-compose.images.yml` is gone: if you listed it in `COMPOSE_FILE` or a deployment tool, remove it and keep only `docker-compose.yml`. A source build that relied on the old default now needs the build file.
+- **Host ports are configurable.** `GRAFANA_PORT`, `API_PORT` and `POSTGRES_PORT` change the published ports (defaults unchanged: 3000, 3001, 5432), so the stack can share a host with other services.
+
 ## [0.2.9] - 2026-11-14
 
 ### Changed

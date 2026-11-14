@@ -43,8 +43,8 @@ jobs:
           POSTGRES_PASSWORD: ci-test
           API_USER_PASSWORD: ci-test
           GF_SECURITY_ADMIN_PASSWORD: ci-test
-      - name: Validate the published-images overlay
-        run: docker compose -f docker-compose.yml -f docker-compose.images.yml config --quiet
+      - name: Validate the build overlay
+        run: docker compose -f docker-compose.yml -f docker-compose.build.yml config --quiet
         env:
           POSTGRES_PASSWORD: ci-test
           API_USER_PASSWORD: ci-test
@@ -58,7 +58,7 @@ jobs:
       - name: Install yamllint
         run: pip install yamllint
       - name: Lint YAML files
-        run: yamllint -d relaxed docker-compose.yml docker-compose.images.yml grafana/provisioning/
+        run: yamllint -d relaxed docker-compose.yml docker-compose.build.yml grafana/provisioning/
 
   smoke-test:
     name: Smoke test (seeded stack + API)
@@ -69,6 +69,8 @@ jobs:
       GF_SECURITY_ADMIN_PASSWORD: ci-test
       # Feb 31 never comes: the importer must not download iNaturalist in CI.
       IMPORT_CRON: "0 3 31 2 *"
+      # Test this commit's importer and backup, not the last release's.
+      COMPOSE_FILE: docker-compose.yml:docker-compose.build.yml
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
