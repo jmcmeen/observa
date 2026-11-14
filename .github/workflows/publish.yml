@@ -9,14 +9,15 @@ name: Publish images
 # release, latest. Both are built for amd64 and arm64.
 #
 # Two jobs, so a release is never half published:
-#   build    builds each image and pushes it under a temporary build-<sha> tag.
-#   release  once both builds succeeded, gives both images their version tag,
+#   build    builds each image and pushes it by digest only, with no tag, and hands
+#            the digest to the release job.
+#   release  once both builds succeeded, tags those exact images with the version,
 #            then moves the minor-line and latest tags if this is still the
 #            newest release. Those are decided here, right before they move,
 #            so a slow run for an older release can't push them backwards.
 # A version tag that already exists is never overwritten, so re-running a
 # release (like re-running a PyPI publish) only completes what is missing and
-# re-checks the moving tags. The build-<sha> tags are scratch and can be deleted.
+# re-checks the moving tags. Nothing temporary is left in the registry.
 #
 # No secrets: it pushes with the workflow's GITHUB_TOKEN. A package GitHub
 # hasn't seen before starts out private. After the first publish, open each
@@ -77,7 +78,7 @@ jobs:
         run: |
           version=${GITHUB_REF_NAME#v}
           name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/observa-$IMAGE
-          echo "staging=$name:build-$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
           # A published version tag is never overwritten: a retry would build
           # from newer base images and packages and change what that version is.
           if docker buildx imagetools inspect "$name:$version" > /dev/null 2>&1; then
@@ -85,14 +86,14 @@ jobs:
             echo "published=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build and push
+      - name: Build and push by digest
+        id: build
         if: steps.names.outputs.published != 'true'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: ./${{ matrix.image }}
           platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.names.outputs.staging }}
+          outputs: type=image,name=${{ steps.names.outputs.name }},push-by-digest=true,name-canonical=true,push=true
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
@@ -100,6 +101,24 @@ jobs:
             org.opencontainers.image.title=observa-${{ matrix.image }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+      - name: Record the image digest
+        if: steps.names.outputs.published != 'true'
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          IMAGE: ${{ matrix.image }}
+        run: |
+          mkdir -p digests
+          echo "$DIGEST" > "digests/$IMAGE"
+
+      - name: Hand the digest to the release job
+        if: steps.names.outputs.published != 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: digest-${{ matrix.image }}
+          path: digests/${{ matrix.image }}
+          retention-days: 1
+          if-no-files-found: error
 
   release:
     name: Release tags
@@ -133,6 +152,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Get the image digests from the build jobs
+        # Nothing to download when every image was already published.
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: digest-*
+          path: digests
+          merge-multiple: true
+
       - name: Give both images their release tags
         run: |
           semver='^v[0-9]+\.[0-9]+\.[0-9]+$'
@@ -141,20 +169,21 @@ jobs:
           owner=${GITHUB_REPOSITORY_OWNER,,}
           images="importer backup" # keep in step with the build matrix
           exists() { docker buildx imagetools inspect "$1" > /dev/null 2>&1; }
+          digest() { cat "digests/$1" 2> /dev/null; }
 
           # Everything must be in place before anything is tagged, so a release
           # is never left with one image.
           for image in $images; do
             name=ghcr.io/$owner/observa-$image
-            if ! exists "$name:$version" && ! exists "$name:build-$GITHUB_SHA"; then
-              echo "::error::$name has neither $version nor its build for this commit; not releasing."
+            if ! exists "$name:$version" && [ -z "$(digest "$image")" ]; then
+              echo "::error::$name has neither $version nor a build from this run; not releasing."
               exit 1
             fi
           done
           for image in $images; do
             name=ghcr.io/$owner/observa-$image
             if ! exists "$name:$version"; then
-              docker buildx imagetools create --tag "$name:$version" "$name:build-$GITHUB_SHA"
+              docker buildx imagetools create --tag "$name:$version" "$name@$(digest "$image")"
             fi
           done
 
