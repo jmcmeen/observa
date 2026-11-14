@@ -11,9 +11,9 @@ jobs:
     name: ShellCheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Run ShellCheck
-        uses: ludeeus/action-shellcheck@2.0.0
+        uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38 # 2.0.0
         with:
           scandir: .
           severity: warning
@@ -22,13 +22,13 @@ jobs:
     name: Hadolint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Lint importer Dockerfile
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf # v3.1.0
         with:
           dockerfile: importer/Dockerfile
       - name: Lint backup Dockerfile
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf # v3.1.0
         with:
           dockerfile: backup/Dockerfile
 
@@ -36,9 +36,15 @@ jobs:
     name: Docker Compose Validate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Validate docker-compose.yml
         run: docker compose config --quiet
+        env:
+          POSTGRES_PASSWORD: ci-test
+          API_USER_PASSWORD: ci-test
+          GF_SECURITY_ADMIN_PASSWORD: ci-test
+      - name: Validate the published-images overlay
+        run: docker compose -f docker-compose.yml -f docker-compose.images.yml config --quiet
         env:
           POSTGRES_PASSWORD: ci-test
           API_USER_PASSWORD: ci-test
@@ -48,11 +54,11 @@ jobs:
     name: YAML Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Install yamllint
         run: pip install yamllint
       - name: Lint YAML files
-        run: yamllint -d relaxed docker-compose.yml grafana/provisioning/
+        run: yamllint -d relaxed docker-compose.yml docker-compose.images.yml grafana/provisioning/
 
   smoke-test:
     name: Smoke test (seeded stack + API)
@@ -64,7 +70,7 @@ jobs:
       # Feb 31 never comes: the importer must not download iNaturalist in CI.
       IMPORT_CRON: "0 3 31 2 *"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Start services
         run: docker compose up -d --build --wait --wait-timeout 300 postgres importer postgrest nginx

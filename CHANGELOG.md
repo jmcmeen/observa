@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Features
+
+- **Published images** — each release publishes `ghcr.io/jmcmeen/observa-importer` and `ghcr.io/jmcmeen/observa-backup` (amd64 and arm64), tagged with the version, its minor line and, for the newest release, `latest`. `docker-compose.images.yml` switches a deployment from building them to pulling them; building from source stays the default.
+
 ## [0.2.6] - 2026-11-14
 
 ### Features

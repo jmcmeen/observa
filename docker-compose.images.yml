@@ -1,0 +1,22 @@
+# Optional: run the published importer and backup images instead of building
+# them from source. Use it on top of the main file:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.images.yml up -d
+#
+# or set COMPOSE_FILE=docker-compose.yml:docker-compose.images.yml in .env.
+# Needs Docker Compose 2.24 or later (for `!reset`).
+#
+# OBSERVA_VERSION picks the tag: a release (0.2.7), a minor line (0.2), or
+# latest (the default). Only these two images are published; the others come
+# from upstream, and the mounted config still comes from this repository.
+#
+# Compose reuses an image it already has, so a moving tag (latest, 0.2) does not
+# refresh on `up -d`. Run `docker compose pull` first when updating (see the
+# README's Updating section).
+services:
+  importer:
+    image: ghcr.io/jmcmeen/observa-importer:${OBSERVA_VERSION:-latest}
+    build: !reset null
+  backup:
+    image: ghcr.io/jmcmeen/observa-backup:${OBSERVA_VERSION:-latest}
+    build: !reset null

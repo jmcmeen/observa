@@ -1,0 +1,11 @@
+version: 2
+updates:
+  # Actions are pinned to commit hashes (a tag can be moved to different code),
+  # so nothing updates them unless this does. One PR a month for all of them.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
