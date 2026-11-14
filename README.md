@@ -35,7 +35,7 @@ A Dockerized platform for hosting and exploring [iNaturalist Open Data](https://
    docker compose up -d
    ```
 
-   This starts PostgreSQL (with PostGIS), Grafana, the importer, and PostgREST.
+   This starts PostgreSQL (with PostGIS), Grafana, the importer, and PostgREST. The first run builds the importer and backup images from source. To pull the published images instead, see [Published images](#published-images).
 
 3. **Run the initial import**
 
@@ -392,7 +392,28 @@ docker compose exec postgres psql -U observa -d inaturalist -c "
 "
 ```
 
+### Updating
+
+Check out the release you want, then apply it. Your data lives in volumes, so it persists. Read the [CHANGELOG](CHANGELOG.md) first: [db/init/](db/init/) only runs on a database's first startup, so a schema change needs the steps it describes.
+
+```bash
+git pull
+docker compose up -d --build   # building the importer and backup images from source (the default)
+```
+
+If you run the [published images](#published-images), pull them instead. The importer and backup images come from the registry, so `--build` has nothing to do for them:
+
+```bash
+git pull
+docker compose -f docker-compose.yml -f docker-compose.images.yml pull importer backup
+docker compose -f docker-compose.yml -f docker-compose.images.yml up -d
+```
+
+With `OBSERVA_VERSION=latest` (the default) the pull fetches the newest release. Pin a version or minor line to stay put. Keep the checkout and the images at the same release, because the mounted config (`db/`, `grafana/`, `nginx/`) comes from the checkout.
+
 ### Rebuilding a single service
+
+This builds from source, so it applies to a deployment that doesn't use the published images:
 
 ```bash
 docker compose up -d --build importer   # rebuild and restart importer only
