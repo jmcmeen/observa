@@ -77,7 +77,7 @@ services:
         condition: service_healthy
 
   postgrest:
-    image: postgrest/postgrest:v16.4
+    image: postgrest/postgrest:v16.5
     restart: unless-stopped
     environment:
       PGRST_DB_URI: postgres://api_user:${API_USER_PASSWORD:?Set API_USER_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-inaturalist}
