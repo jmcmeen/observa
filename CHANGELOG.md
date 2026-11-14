@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.7] - 2026-11-14
+
 ### Features
 
 - **Published images** — each release publishes `ghcr.io/jmcmeen/observa-importer` and `ghcr.io/jmcmeen/observa-backup` (amd64 and arm64), tagged with the version, its minor line and, for the newest release, `latest`. `docker-compose.images.yml` switches a deployment from building them to pulling them; building from source stays the default.
@@ -206,7 +208,8 @@ Initial release of Observa, a Dockerized platform for hosting and exploring iNat
 - `import.sh` refactored into named functions (`download_files`, `validate_files`, `load_staging`, `swap_tables`, `refresh_views`).
 - Alerting contact points provisioned via `contact-points.yml` with environment variable support.
 
-[Unreleased]: https://github.com/jmcmeen/observa/compare/v0.2.6...HEAD
+[Unreleased]: https://github.com/jmcmeen/observa/compare/v0.2.7...HEAD
+[0.2.7]: https://github.com/jmcmeen/observa/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/jmcmeen/observa/compare/v0.2.5...v0.2.6
 [0.2.1]: https://github.com/jmcmeen/observa/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/jmcmeen/observa/compare/v0.1.4...v0.2.0
