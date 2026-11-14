@@ -153,24 +153,9 @@ For changes that require `ALTER TABLE` or migration logic, open an issue first t
 3. Restart Grafana: `docker restart observa-grafana-1`.
 4. Verify with the API: `curl -s -u "admin:$GF_PASS" 'http://localhost:3000/api/prometheus/grafana/api/v1/alerts'`.
 
-### Images and the two compose files
-
-`docker-compose.yml` builds every service from source and mounts the configuration in `db/`, `grafana/` and `nginx/` over what the images carry, so edits to those files take effect on a restart. `docker-compose.images.yml` is the self-contained deployment: the same services from the published images, with that configuration baked in and nothing mounted from the repository. Keep the two in step: a new setting, port or healthcheck goes in both. Base image versions are pinned (by tag and digest) in each Dockerfile only; Dependabot updates them.
-
-CI builds the images from your checkout and starts `docker-compose.images.yml` against them, so a difference between the two files, or a file missing from an image, fails there. To try it yourself:
-
-```bash
-docker build -t local/observa-importer:dev -f importer/Dockerfile .
-docker build -t local/observa-backup:dev backup
-docker build -t local/observa-postgres:dev db
-docker build -t local/observa-grafana:dev grafana
-docker build -t local/observa-nginx:dev nginx
-OBSERVA_REGISTRY=local OBSERVA_VERSION=dev docker compose -f docker-compose.images.yml up -d
-```
-
 ### Modifying the importer
 
-`import.sh` is baked into the importer image (no bind-mount), so changes require a rebuild. Use the default `docker-compose.yml` for this: `docker-compose.images.yml` runs released images and would ignore your local changes.
+`import.sh` is baked into the importer image (no bind-mount), so changes require a rebuild. Use the default `docker-compose.yml` for this: the [published-images overlay](README.md#quick-start) runs released images and would ignore your local changes.
 
 ```bash
 docker compose up -d --build importer

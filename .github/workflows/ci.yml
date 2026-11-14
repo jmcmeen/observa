@@ -31,18 +31,6 @@ jobs:
         uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf # v3.1.0
         with:
           dockerfile: backup/Dockerfile
-      - name: Lint postgres Dockerfile
-        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf # v3.1.0
-        with:
-          dockerfile: db/Dockerfile
-      - name: Lint grafana Dockerfile
-        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf # v3.1.0
-        with:
-          dockerfile: grafana/Dockerfile
-      - name: Lint nginx Dockerfile
-        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf # v3.1.0
-        with:
-          dockerfile: nginx/Dockerfile
 
   docker-compose-validate:
     name: Docker Compose Validate
@@ -55,8 +43,8 @@ jobs:
           POSTGRES_PASSWORD: ci-test
           API_USER_PASSWORD: ci-test
           GF_SECURITY_ADMIN_PASSWORD: ci-test
-      - name: Validate the standalone images file
-        run: docker compose -f docker-compose.images.yml config --quiet
+      - name: Validate the published-images overlay
+        run: docker compose -f docker-compose.yml -f docker-compose.images.yml config --quiet
         env:
           POSTGRES_PASSWORD: ci-test
           API_USER_PASSWORD: ci-test
@@ -89,62 +77,6 @@ jobs:
 
       - name: Seed test data and run API smoke tests
         run: ./scripts/test-local.sh
-
-      - name: Service logs
-        if: failure()
-        run: docker compose logs --no-color
-
-      - name: Stop services
-        if: always()
-        run: docker compose down -v
-
-  images-smoke-test:
-    name: Smoke test (standalone images)
-    runs-on: ubuntu-latest
-    env:
-      POSTGRES_PASSWORD: ci-test
-      API_USER_PASSWORD: ci-test
-      GF_SECURITY_ADMIN_PASSWORD: ci-test
-      IMPORT_CRON: "0 3 31 2 *"
-      # Run docker-compose.images.yml, the file people deploy from, against
-      # images built from this checkout.
-      COMPOSE_FILE: docker-compose.images.yml
-      OBSERVA_REGISTRY: local
-      OBSERVA_VERSION: ci
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-
-      - name: The standalone file must not depend on the repository
-        run: |
-          if grep -nE '^\s+- \./|^\s+build:' docker-compose.images.yml; then
-            echo "::error::docker-compose.images.yml mounts or builds from the repository; its images must carry everything."
-            exit 1
-          fi
-
-      - name: Build the images
-        run: |
-          docker build -t local/observa-importer:ci -f importer/Dockerfile .
-          docker build -t local/observa-backup:ci backup
-          docker build -t local/observa-postgres:ci db
-          docker build -t local/observa-grafana:ci grafana
-          docker build -t local/observa-nginx:ci nginx
-
-      - name: Start services
-        run: docker compose up -d --wait --wait-timeout 300 postgres importer postgrest nginx grafana
-
-      - name: Seed test data and run API smoke tests
-        run: ./scripts/test-local.sh
-
-      - name: The configuration came from the images
-        run: |
-          # Server settings from the baked postgresql.conf.
-          docker compose exec -T postgres psql -U observa -d inaturalist -Atc "show shared_preload_libraries" | grep -q pg_stat_statements
-          # Datasource and every dashboard from the baked provisioning.
-          curl -sf -u "admin:$GF_SECURITY_ADMIN_PASSWORD" http://localhost:3000/api/datasources | grep -q inaturalist
-          want=$(ls grafana/provisioning/dashboards/*.json | wc -l)
-          got=$(curl -sf -u "admin:$GF_SECURITY_ADMIN_PASSWORD" "http://localhost:3000/api/search?type=dash-db" | python3 -c 'import sys, json; print(len(json.load(sys.stdin)))')
-          echo "dashboards provisioned: $got of $want"
-          [ "$got" -eq "$want" ]
 
       - name: Service logs
         if: failure()

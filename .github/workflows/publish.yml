@@ -1,17 +1,12 @@
 name: Publish images
 
-# Builds the images and publishes them to GitHub Container Registry when a
-# GitHub Release is published, or when release.yml starts it on a new tag. It
-# only runs on a vX.Y.Z tag on main:
-#   ghcr.io/jmcmeen/observa-importer:<version>   (with the SQL and export scripts)
+# Builds the importer and backup images and publishes them to GitHub Container
+# Registry when a GitHub Release is published, or when release.yml starts it on
+# a new tag. It only runs on a vX.Y.Z tag on main:
+#   ghcr.io/jmcmeen/observa-importer:<version>
 #   ghcr.io/jmcmeen/observa-backup:<version>
-#   ghcr.io/jmcmeen/observa-postgres:<version>   (with the schema and server settings)
-#   ghcr.io/jmcmeen/observa-grafana:<version>    (with the dashboards and alert rules)
-#   ghcr.io/jmcmeen/observa-nginx:<version>      (with the proxy configuration)
 # Each gets the full version (0.2.7), its minor line (0.2) and, for the newest
-# release, latest. All are built for amd64 and arm64, except postgres (amd64
-# only: PostGIS publishes no arm64 image). Together with
-# docker-compose.images.yml they make a deployment that needs nothing else.
+# release, latest. Both are built for amd64 and arm64.
 #
 # Two jobs, so a release is never half published:
 #   build    builds each image and pushes it under a temporary build-<sha> tag.
@@ -46,13 +41,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Keep the image names in step with `images` in the release job.
-        include:
-          - {image: importer, context: ., file: importer/Dockerfile, platforms: "linux/amd64,linux/arm64"}
-          - {image: backup, context: ./backup, file: backup/Dockerfile, platforms: "linux/amd64,linux/arm64"}
-          - {image: postgres, context: ./db, file: db/Dockerfile, platforms: "linux/amd64"} # the PostGIS base has no arm64
-          - {image: grafana, context: ./grafana, file: grafana/Dockerfile, platforms: "linux/amd64,linux/arm64"}
-          - {image: nginx, context: ./nginx, file: nginx/Dockerfile, platforms: "linux/amd64,linux/arm64"}
+        image: [importer, backup] # keep in step with the loops in the release job
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -100,9 +89,8 @@ jobs:
         if: steps.names.outputs.published != 'true'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
-          context: ${{ matrix.context }}
-          file: ${{ matrix.file }}
-          platforms: ${{ matrix.platforms }}
+          context: ./${{ matrix.image }}
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.names.outputs.staging }}
           labels: |
@@ -151,7 +139,7 @@ jobs:
           version=${GITHUB_REF_NAME#v}
           minor=${version%.*}
           owner=${GITHUB_REPOSITORY_OWNER,,}
-          images="importer backup postgres grafana nginx" # keep in step with the build matrix
+          images="importer backup" # keep in step with the build matrix
           exists() { docker buildx imagetools inspect "$1" > /dev/null 2>&1; }
 
           # Everything must be in place before anything is tagged, so a release

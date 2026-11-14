@@ -1,4 +1,4 @@
-FROM python:3.12-alpine@sha256:c5ba3deef00c7758561a0f03c26f44f10589263d40e732b8748e0d1f38f6dd89
+FROM python:3.12-alpine
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
@@ -9,11 +9,9 @@ RUN apk add --no-cache \
     gzip \
  && pip install --no-cache-dir boto3 tqdm
 
-# Built from the repository root, so the SQL and export scripts are baked in too.
-COPY importer/download.py /download.py
-COPY importer/import.sh /import.sh
-COPY importer/entrypoint.sh /entrypoint.sh
-COPY db/scripts /scripts
+COPY download.py /download.py
+COPY import.sh /import.sh
+COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /import.sh /entrypoint.sh
 
 WORKDIR /data

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Back to two published images.** The `observa-postgres`, `observa-grafana` and `observa-nginx` images added in 0.2.8 are no longer built or published, and `docker-compose.images.yml` is the overlay for the importer and backup images again: use it together with `docker-compose.yml`, as in 0.2.7. The importer and backup images are unchanged. The base images are no longer pinned by digest, and Dependabot checks GitHub Actions only. If you ran `docker-compose.images.yml` on its own with 0.2.8, go back to `docker compose -f docker-compose.yml -f docker-compose.images.yml up -d`.
+
 ## [0.2.8] - 2026-11-14
 
 ### Features

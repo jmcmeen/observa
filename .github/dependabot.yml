@@ -9,25 +9,3 @@ updates:
     groups:
       actions:
         patterns: ["*"]
-
-  # Base images in the Dockerfiles. Each is pinned by tag and digest, so this
-  # also picks up a rebuild of the same tag. PostGIS gets its own PR, and a new
-  # PostgreSQL major is never bumped automatically: it can't open an existing
-  # data directory.
-  - package-ecosystem: docker
-    directories: ["/importer", "/backup", "/db", "/grafana", "/nginx"]
-    schedule:
-      interval: monthly
-    groups:
-      base-images:
-        patterns: ["*"]
-        exclude-patterns: ["postgis/postgis"]
-    ignore:
-      - dependency-name: "postgis/postgis"
-        update-types: ["version-update:semver-major"]
-
-  # Image tags written directly in the compose files (PostgREST).
-  - package-ecosystem: docker-compose
-    directory: "/"
-    schedule:
-      interval: monthly
