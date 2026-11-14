@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Features
+
+- **Deployment settings in `.env`** — `API_BIND`, `GRAFANA_ROOT_URL`, `API_PUBLIC_URL` and `PG_SHARED_BUFFERS` / `PG_EFFECTIVE_CACHE_SIZE` / `PG_WORK_MEM` / `PG_MAINTENANCE_WORK_MEM` replace the need for a `docker-compose.override.yml` when binding to a specific interface, running behind a proxy, or tuning for a smaller host. Defaults are unchanged.
+- **`BACKUP_ENABLED=false`** turns off scheduled backups. The container idles, and `/backup.sh` still works on demand. Default is on.
+
+### Documentation
+
+- The restore, verify and cleanup commands in `docs/troubleshooting.md` no longer pass `--profile backup`, which isn't a profile in `docker-compose.yml` and isn't accepted by `docker compose run`.
+
 ## [0.2.1] - 2026-04-09
 
 ### Features
